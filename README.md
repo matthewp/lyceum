@@ -44,10 +44,10 @@ AUTH_PASSWORD=your-secret \
 
 ## Container
 
-The included `Containerfile` builds a minimal image based on `node:24-slim`. Node 24 supports native TypeScript type stripping, so no build step is needed — the TypeScript source runs directly with the `--experimental-strip-types` flag.
+Pre-built images are available from GitHub Container Registry:
 
 ```bash
-podman build -t lyceum .
+podman pull ghcr.io/matthewp/lyceum:latest
 ```
 
 The container exposes port 3000. Mount a volume at `/data` to persist OAuth state across restarts:
@@ -59,7 +59,13 @@ podman run -d \
   -e AUTH_PASSWORD=your-secret \
   -e CALIBRE_SERVER_URL=http://calibre:8080 \
   -e BASE_URL=https://lyceum.yourdomain.com \
-  lyceum
+  ghcr.io/matthewp/lyceum:latest
+```
+
+To build from source instead, the included `Containerfile` uses `node:24-slim`. Node 24 supports native TypeScript type stripping, so no build step is needed — the source runs directly with `--experimental-strip-types`.
+
+```bash
+podman build -t lyceum .
 ```
 
 For sensitive values, use podman secrets:
