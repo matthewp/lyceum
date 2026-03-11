@@ -10,4 +10,4 @@ COPY tsconfig.json ./
 
 EXPOSE 3000
 
-CMD ["node", "src/server.ts"]
+CMD ["node", "--experimental-strip-types", "src/server.ts"]

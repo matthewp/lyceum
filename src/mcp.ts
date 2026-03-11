@@ -9,6 +9,7 @@ import {
   listSeries,
   getDownloadUrl,
   setMetadata,
+  setCover,
   convertBook,
 } from "./calibre.ts";
 import { createSignedUrl } from "./auth.ts";
@@ -124,6 +125,26 @@ export function createMcpServer(): McpServer {
       await setMetadata(id, fields as Record<string, unknown>);
       return {
         content: [{ type: "text", text: "Metadata updated successfully." }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("set_cover", {
+    description: "Set a book's cover image from a URL. Use this after fetch_metadata to apply a cover from the returned cover_url.",
+    inputSchema: {
+      id: z.number().describe("The book ID"),
+      image_url: z.string().describe("URL of the cover image to download and set"),
+    },
+  }, async ({ id, image_url }) => {
+    try {
+      await setCover(id, image_url);
+      return {
+        content: [{ type: "text", text: "Cover updated successfully." }],
       };
     } catch (e: any) {
       return {

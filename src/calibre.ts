@@ -251,6 +251,25 @@ export async function setMetadata(
   });
 }
 
+export async function setCover(bookId: number, imageUrl: string): Promise<void> {
+  const imgRes = await fetch(imageUrl);
+  if (!imgRes.ok) throw new Error(`Failed to download cover image: ${imgRes.status}`);
+  const imgData = new Uint8Array(await imgRes.arrayBuffer());
+
+  const path = libraryPath(`/cdb/set-cover/${bookId}`);
+  const url = `${CALIBRE_SERVER}${path}`;
+  console.log(`[calibre] POST ${url} (cover ${imgData.length} bytes)`);
+  const res = await digestFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream" },
+    body: imgData,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to set cover (${res.status}): ${body}`);
+  }
+}
+
 export async function deleteBooks(bookIds: number[]): Promise<void> {
   const ids = bookIds.join(",");
   const path = libraryPath(`/cdb/delete-books/${ids}`);
@@ -314,6 +333,19 @@ function formatBook(raw: any) {
   };
 }
 
+function extractCustomColumns(userMetadata: any): Record<string, any> {
+  if (!userMetadata) return {};
+  const result: Record<string, any> = {};
+  for (const [key, meta] of Object.entries(userMetadata) as any) {
+    result[key] = {
+      name: meta.name,
+      datatype: meta.datatype,
+      value: meta["#value#"] ?? null,
+    };
+  }
+  return result;
+}
+
 function formatBookDetail(raw: any) {
   return {
     id: raw.application_id ?? raw.id,
@@ -334,6 +366,6 @@ function formatBookDetail(raw: any) {
     comments: raw.comments ?? null,
     has_cover: raw.has_cover ?? false,
     cover: raw.cover ? `${CALIBRE_SERVER}${raw.cover}` : null,
-    custom_columns: raw.custom_columns ?? {},
+    custom_columns: extractCustomColumns(raw.user_metadata),
   };
 }

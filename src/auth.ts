@@ -1,4 +1,6 @@
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
 const PASSWORD = process.env.AUTH_PASSWORD;
 if (!PASSWORD) {
@@ -6,10 +8,48 @@ if (!PASSWORD) {
   process.exit(1);
 }
 
+const STATE_FILE = process.env.AUTH_STATE_FILE ?? "/data/auth-state.json";
+
+interface PersistedState {
+  authCodes: Record<string, { clientId: string; redirectUri: string; expiresAt: number }>;
+  accessTokens: string[];
+  clients: Record<string, { clientId: string; redirectUris: string[] }>;
+}
+
 // In-memory stores
 const authCodes = new Map<string, { clientId: string; redirectUri: string; expiresAt: number }>();
 const accessTokens = new Set<string>();
 const clients = new Map<string, { clientId: string; redirectUris: string[] }>();
+
+function loadState(): void {
+  try {
+    const data = JSON.parse(readFileSync(STATE_FILE, "utf-8")) as PersistedState;
+    for (const [k, v] of Object.entries(data.authCodes ?? {})) {
+      if (v.expiresAt > Date.now()) authCodes.set(k, v);
+    }
+    for (const t of data.accessTokens ?? []) accessTokens.add(t);
+    for (const [k, v] of Object.entries(data.clients ?? {})) clients.set(k, v);
+    console.log(`[auth] Loaded state: ${clients.size} clients, ${accessTokens.size} tokens`);
+  } catch {
+    console.log("[auth] No existing state file, starting fresh");
+  }
+}
+
+function saveState(): void {
+  const state: PersistedState = {
+    authCodes: Object.fromEntries(authCodes),
+    accessTokens: [...accessTokens],
+    clients: Object.fromEntries(clients),
+  };
+  try {
+    mkdirSync(dirname(STATE_FILE), { recursive: true });
+    writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  } catch (e: any) {
+    console.error(`[auth] Failed to save state: ${e.message}`);
+  }
+}
+
+loadState();
 
 function generateToken(): string {
   return randomBytes(32).toString("hex");
@@ -24,6 +64,7 @@ export function registerClient(body: {
   const clientId = generateToken();
   const clientSecret = generateToken();
   clients.set(clientId, { clientId, redirectUris: body.redirect_uris });
+  saveState();
 
   return {
     client_id: clientId,
@@ -43,6 +84,7 @@ export function createAuthCode(clientId: string, redirectUri: string): string | 
     redirectUri,
     expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
   });
+  saveState();
   return code;
 }
 
@@ -63,6 +105,7 @@ export function exchangeCode(
   authCodes.delete(code);
   const token = generateToken();
   accessTokens.add(token);
+  saveState();
   return token;
 }
 
