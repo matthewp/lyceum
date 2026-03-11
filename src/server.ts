@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
-import { createReadStream, statSync } from "node:fs";
-import { basename } from "node:path";
+import { createReadStream, statSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { basename, join } from "node:path";
+import { tmpdir } from "node:os";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpServer } from "./mcp.ts";
 import { listBooks, getBook, countBooks, getBookFilePath } from "./db.ts";
@@ -12,7 +13,10 @@ import {
   verifySignedUrl,
   checkPassword,
   AUTHORIZE_HTML,
+  UPLOAD_HTML,
 } from "./auth.ts";
+import { parseMultipart } from "./multipart.ts";
+import { addBook } from "./calibre.ts";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
@@ -32,6 +36,15 @@ function readBody(req: import("node:http").IncomingMessage): Promise<string> {
     let body = "";
     req.on("data", (chunk: Buffer) => (body += chunk));
     req.on("end", () => resolve(body));
+    req.on("error", reject);
+  });
+}
+
+function readBodyRaw(req: import("node:http").IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
 }
@@ -212,6 +225,53 @@ const server = createServer(async (req, res) => {
       json(res, { error: "File not found on disk" }, 404);
     }
     return;
+  }
+
+  // --- Upload Endpoint (signed URL) ---
+  if (path === "/upload") {
+    const expires = url.searchParams.get("expires") ?? "";
+    const sig = url.searchParams.get("sig") ?? "";
+
+    if (!verifySignedUrl("/upload", expires, sig)) {
+      json(res, { error: "Invalid or expired upload link" }, 403);
+      return;
+    }
+
+    if (req.method === "GET") {
+      html(res, UPLOAD_HTML);
+      return;
+    }
+
+    if (req.method === "POST") {
+      const contentType = req.headers["content-type"] ?? "";
+      const body = await readBodyRaw(req);
+      const file = parseMultipart(body, contentType);
+
+      if (!file) {
+        html(res, UPLOAD_HTML.replace("</form>", '<p class="error">No file received.</p></form>'), 400);
+        return;
+      }
+
+      const tmpDir = mkdtempSync(join(tmpdir(), "lyceum-"));
+      const tmpFile = join(tmpDir, file.filename);
+
+      try {
+        writeFileSync(tmpFile, file.data);
+        const result = await addBook(tmpFile);
+        html(res, UPLOAD_HTML.replace(
+          "</form>",
+          `<p class="success">Uploaded ${file.filename}. ${result}</p></form>`
+        ));
+      } catch (e: any) {
+        html(res, UPLOAD_HTML.replace(
+          "</form>",
+          `<p class="error">Upload failed: ${e.message}</p></form>`
+        ), 500);
+      } finally {
+        rmSync(tmpDir, { recursive: true, force: true });
+      }
+      return;
+    }
   }
 
   // --- REST Endpoints ---

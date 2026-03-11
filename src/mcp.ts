@@ -13,6 +13,7 @@ import {
   getBookFilePath,
 } from "./db.ts";
 import { createSignedUrl } from "./auth.ts";
+import { addBook, fetchMetadata, setMetadata } from "./calibre.ts";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 
@@ -134,6 +135,74 @@ export function createMcpServer(): McpServer {
     return {
       content: [{ type: "text", text: url }],
     };
+  });
+
+  server.registerTool("get_upload_link", {
+    description: "Get a temporary upload link to add a book to the Calibre library. Returns a signed URL that opens a file upload form in the browser. The link expires in 10 minutes.",
+  }, async () => {
+    const url = createSignedUrl(BASE_URL, "/upload", 600);
+    return {
+      content: [{ type: "text", text: url }],
+    };
+  });
+
+  server.registerTool("add_book", {
+    description: "Add a book to the Calibre library by file path (for files already on the server).",
+    inputSchema: {
+      file_path: z.string().describe("Absolute path to the book file on the server"),
+    },
+  }, async ({ file_path }) => {
+    try {
+      const result = await addBook(file_path);
+      return {
+        content: [{ type: "text", text: result || "Book added successfully." }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("fetch_metadata", {
+    description: "Search online for book metadata by title and optionally author. Returns metadata from various sources (Amazon, Google, etc.).",
+    inputSchema: {
+      title: z.string().describe("Book title to search for"),
+      authors: z.string().optional().describe("Author name to narrow the search"),
+    },
+  }, async ({ title, authors }) => {
+    try {
+      const result = await fetchMetadata(title, authors);
+      return {
+        content: [{ type: "text", text: result }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("set_metadata", {
+    description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors, tags, series, publisher, rating, comments, etc.",
+    inputSchema: {
+      id: z.number().describe("The book ID"),
+      fields: z.record(z.string(), z.string()).describe("Key-value pairs of metadata fields to set (e.g. {\"title\": \"New Title\", \"tags\": \"fiction,sci-fi\"})"),
+    },
+  }, async ({ id, fields }) => {
+    try {
+      const result = await setMetadata(id, fields);
+      return {
+        content: [{ type: "text", text: result || "Metadata updated successfully." }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
   });
 
   return server;

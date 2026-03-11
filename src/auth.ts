@@ -99,6 +99,30 @@ export function verifySignedUrl(path: string, expires: string, signature: string
   }
 }
 
+export const UPLOAD_HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Lyceum - Upload Book</title>
+  <style>
+    body { font-family: system-ui; max-width: 400px; margin: 80px auto; padding: 0 20px; }
+    h1 { font-size: 1.4em; }
+    input, button { display: block; width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; font-size: 1em; }
+    button { background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .success { color: #16a34a; }
+    .error { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <h1>Lyceum</h1>
+  <p>Upload a book to your Calibre library.</p>
+  <form method="POST" enctype="multipart/form-data">
+    <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
+    <button type="submit">Upload</button>
+  </form>
+</body>
+</html>`;
+
 export const AUTHORIZE_HTML = `<!DOCTYPE html>
 <html>
 <head>
