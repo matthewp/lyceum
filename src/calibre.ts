@@ -1,66 +1,264 @@
-import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 
-const CMD_PREFIX = process.env.CALIBRE_CMD_PREFIX?.split(/\s+/).filter(Boolean) ?? [];
-const LIBRARY_PATH = process.env.CALIBRE_LIBRARY_PATH
-  ?? (process.env.CALIBRE_DB_PATH?.replace(/\/metadata\.db$/, ""))
-  ?? `${process.env.HOME}/calibre-library`;
+const CALIBRE_SERVER = process.env.CALIBRE_SERVER_URL ?? "http://localhost:8080";
+const LIBRARY_ID = process.env.CALIBRE_LIBRARY_ID ?? "";
 
-function run(cmd: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
-  const fullArgs = CMD_PREFIX.length
-    ? [...CMD_PREFIX.slice(1), cmd, ...args]
-    : args;
-  const bin = CMD_PREFIX.length ? CMD_PREFIX[0] : cmd;
+function libraryPath(path: string): string {
+  return LIBRARY_ID ? `${path}/${LIBRARY_ID}` : path;
+}
 
-  return new Promise((resolve, reject) => {
-    execFile(bin, fullArgs, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(`${cmd} failed: ${stderr || error.message}`));
-      } else {
-        resolve({ stdout, stderr });
-      }
+async function get(path: string): Promise<any> {
+  const url = `${CALIBRE_SERVER}${path}`;
+  console.log(`[calibre] GET ${url}`);
+  try {
+    const res = await fetch(url);
+    console.log(`[calibre] GET ${url} -> ${res.status}`);
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[calibre] GET ${url} error: ${body}`);
+      throw new Error(`Calibre server error (${res.status}): ${body}`);
+    }
+    return res.json();
+  } catch (e: any) {
+    if (e.message.startsWith("Calibre server error")) throw e;
+    console.error(`[calibre] GET ${url} fetch failed:`, e.message);
+    throw e;
+  }
+}
+
+async function post(path: string, body: unknown): Promise<any> {
+  const url = `${CALIBRE_SERVER}${path}`;
+  console.log(`[calibre] POST ${url}`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
+
+    const text = await res.text();
+    console.log(`[calibre] POST ${url} -> ${res.status}`);
+    if (!res.ok) {
+      console.error(`[calibre] POST ${url} error: ${text}`);
+      throw new Error(`Calibre server error (${res.status}): ${text}`);
+    }
+
+    try {
+      const json = JSON.parse(text);
+      if (json.err) throw new Error(json.err);
+      return json;
+    } catch (e: any) {
+      if (e.message.startsWith("Calibre server error")) throw e;
+      return text;
+    }
+  } catch (e: any) {
+    if (e.message.startsWith("Calibre server error")) throw e;
+    console.error(`[calibre] POST ${url} fetch failed:`, e.message);
+    throw e;
+  }
+}
+
+// --- Read operations ---
+
+export async function listBooks(opts: { limit?: number; offset?: number } = {}) {
+  const num = opts.limit ?? 50;
+  const offset = opts.offset ?? 0;
+  const path = libraryPath(`/ajax/search`);
+  const result = await get(`${path}?num=${num}&offset=${offset}&sort=timestamp&sort_order=desc`);
+
+  // result.book_ids is an array of IDs, fetch metadata for each
+  const bookIds: number[] = result.book_ids;
+  const total: number = result.total_num;
+
+  if (bookIds.length === 0) return { books: [], total };
+
+  const booksPath = libraryPath(`/ajax/books`);
+  const books = await get(`${booksPath}?ids=${bookIds.join(",")}`);
+
+  // books is a map of id -> metadata, return in order
+  const ordered = bookIds.map(id => formatBook(books[String(id)]));
+  return { books: ordered, total };
+}
+
+export async function getBook(id: number) {
+  const path = libraryPath(`/ajax/book/${id}`);
+  try {
+    const book = await get(path);
+    return formatBookDetail(book);
+  } catch {
+    return null;
+  }
+}
+
+export async function searchBooks(query: string, opts: { limit?: number; offset?: number } = {}) {
+  const num = opts.limit ?? 50;
+  const offset = opts.offset ?? 0;
+  const path = libraryPath(`/ajax/search`);
+  const result = await get(`${path}?query=${encodeURIComponent(query)}&num=${num}&offset=${offset}&sort=timestamp&sort_order=desc`);
+
+  const bookIds: number[] = result.book_ids;
+  if (bookIds.length === 0) return { results: [], count: 0 };
+
+  const booksPath = libraryPath(`/ajax/books`);
+  const books = await get(`${booksPath}?ids=${bookIds.join(",")}`);
+
+  const results = bookIds.map(id => formatBook(books[String(id)]));
+  return { results, count: results.length };
+}
+
+export async function countBooks(): Promise<number> {
+  const path = libraryPath(`/ajax/search`);
+  const result = await get(`${path}?num=0`);
+  return result.total_num;
+}
+
+export async function listAuthors() {
+  const path = libraryPath(`/ajax/category/${encodeHex("authors")}`);
+  const result = await get(`${path}?num=10000`);
+  return result.items.map((item: any) => ({
+    name: item.name,
+    count: item.count,
+  }));
+}
+
+export async function listTags() {
+  const path = libraryPath(`/ajax/category/${encodeHex("tags")}`);
+  const result = await get(`${path}?num=10000`);
+  return result.items.map((item: any) => ({
+    name: item.name,
+    count: item.count,
+  }));
+}
+
+export async function listSeries() {
+  const path = libraryPath(`/ajax/category/${encodeHex("series")}`);
+  const result = await get(`${path}?num=10000`);
+  return result.items.map((item: any) => ({
+    name: item.name,
+    count: item.count,
+  }));
+}
+
+export function getDownloadUrl(id: number, format: string): string {
+  return `${CALIBRE_SERVER}${libraryPath(`/get/${format.toLowerCase()}/${id}`)}`;
+}
+
+// --- Write operations ---
+
+export async function addBook(
+  filename: string,
+  data: Buffer,
+  addDuplicates = false
+): Promise<{ book_id: number; title: string; authors: string[] }> {
+  const jobId = randomUUID();
+  const dupes = addDuplicates ? "y" : "n";
+  const path = libraryPath(`/cdb/add-book/${jobId}/${dupes}/${encodeURIComponent(filename)}`);
+
+  const res = await fetch(`${CALIBRE_SERVER}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream" },
+    body: new Uint8Array(data),
   });
-}
 
-export async function addBook(filePath: string): Promise<string> {
-  const { stdout } = await run("calibredb", [
-    "add", filePath,
-    "--library-path", LIBRARY_PATH,
-  ]);
-  return stdout.trim();
-}
-
-export async function fetchMetadata(title: string, authors?: string): Promise<string> {
-  const args = ["--title", title];
-  if (authors) args.push("--authors", authors);
-  const { stdout } = await run("fetch-ebook-metadata", args);
-  return stdout.trim();
+  const result = await res.json() as any;
+  if (result.err) throw new Error(result.err);
+  return result;
 }
 
 export async function setMetadata(
   bookId: number,
-  fields: Record<string, string>
-): Promise<string> {
-  const args = ["set_metadata", String(bookId), "--library-path", LIBRARY_PATH];
-  for (const [key, value] of Object.entries(fields)) {
-    args.push("--field", `${key}:${value}`);
-  }
-  const { stdout } = await run("calibredb", args);
-  return stdout.trim();
+  fields: Record<string, unknown>
+): Promise<void> {
+  const path = libraryPath(`/cdb/set-fields/${bookId}`);
+  await post(path, {
+    changes: fields,
+    loaded_book_ids: [bookId],
+  });
+}
+
+export async function deleteBooks(bookIds: number[]): Promise<void> {
+  const ids = bookIds.join(",");
+  const path = libraryPath(`/cdb/delete-books/${ids}`);
+  await post(path, {});
+}
+
+export async function startConversion(
+  bookId: number,
+  inputFmt: string,
+  outputFmt: string
+): Promise<number> {
+  const result = await post(`/conversion/start/${bookId}`, {
+    input_fmt: inputFmt.toLowerCase(),
+    output_fmt: outputFmt.toLowerCase(),
+    options: {},
+  });
+  return result.job_id;
+}
+
+export async function conversionStatus(
+  jobId: number
+): Promise<{ running: boolean; ok?: boolean; percent?: number; msg?: string; fmt?: string }> {
+  return get(`/conversion/status/${jobId}`);
 }
 
 export async function convertBook(
-  inputPath: string,
-  outputPath: string
+  bookId: number,
+  inputFmt: string,
+  outputFmt: string
 ): Promise<string> {
-  const { stdout } = await run("ebook-convert", [inputPath, outputPath]);
-  return stdout.trim();
+  const jobId = await startConversion(bookId, inputFmt, outputFmt);
+
+  for (let i = 0; i < 120; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const status = await conversionStatus(jobId);
+    if (!status.running) {
+      if (status.ok) return `Conversion complete: ${outputFmt.toUpperCase()}`;
+      throw new Error(`Conversion failed: ${status.msg ?? "unknown error"}`);
+    }
+  }
+  throw new Error("Conversion timed out after 4 minutes");
 }
 
-export async function removeBook(bookId: number): Promise<string> {
-  const { stdout } = await run("calibredb", [
-    "remove", String(bookId),
-    "--library-path", LIBRARY_PATH,
-  ]);
-  return stdout.trim();
+// --- Helpers ---
+
+function encodeHex(s: string): string {
+  return Buffer.from(s).toString("hex");
+}
+
+function formatBook(raw: any) {
+  return {
+    id: raw.application_id ?? raw.id,
+    title: raw.title,
+    authors: raw.authors ?? [],
+    timestamp: raw.timestamp,
+    pubdate: raw.pubdate,
+    formats: raw.formats ?? [],
+    series: raw.series ?? null,
+    series_index: raw.series_index ?? null,
+    has_cover: raw.has_cover ?? false,
+  };
+}
+
+function formatBookDetail(raw: any) {
+  return {
+    id: raw.application_id ?? raw.id,
+    title: raw.title,
+    authors: raw.authors ?? [],
+    author_sort: raw.author_sort,
+    timestamp: raw.timestamp,
+    pubdate: raw.pubdate,
+    last_modified: raw.last_modified,
+    series: raw.series ?? null,
+    series_index: raw.series_index ?? null,
+    publisher: raw.publisher ?? null,
+    rating: raw.rating ?? null,
+    tags: raw.tags ?? [],
+    formats: raw.formats ?? [],
+    identifiers: raw.identifiers ?? {},
+    languages: raw.languages ?? [],
+    comments: raw.comments ?? null,
+    has_cover: raw.has_cover ?? false,
+    cover: raw.cover ? `${CALIBRE_SERVER}${raw.cover}` : null,
+    custom_columns: raw.custom_columns ?? {},
+  };
 }

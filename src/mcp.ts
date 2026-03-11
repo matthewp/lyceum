@@ -4,16 +4,14 @@ import {
   listBooks,
   getBook,
   searchBooks,
-  countBooks,
   listAuthors,
   listTags,
   listSeries,
-  listReadBooks,
-  listUnreadBooks,
-  getBookFilePath,
-} from "./db.ts";
+  getDownloadUrl,
+  setMetadata,
+  convertBook,
+} from "./calibre.ts";
 import { createSignedUrl } from "./auth.ts";
-import { addBook, fetchMetadata, setMetadata } from "./calibre.ts";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 
@@ -30,10 +28,9 @@ export function createMcpServer(): McpServer {
       offset: z.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ limit, offset }) => {
-    const books = listBooks({ limit: limit ?? 20, offset: offset ?? 0 });
-    const total = countBooks();
+    const result = await listBooks({ limit: limit ?? 20, offset: offset ?? 0 });
     return {
-      content: [{ type: "text", text: JSON.stringify({ books, total }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
   });
 
@@ -43,7 +40,7 @@ export function createMcpServer(): McpServer {
       id: z.number().describe("The book ID"),
     },
   }, async ({ id }) => {
-    const book = getBook(id);
+    const book = await getBook(id);
     if (!book) {
       return { content: [{ type: "text", text: "Book not found." }], isError: true };
     }
@@ -53,85 +50,54 @@ export function createMcpServer(): McpServer {
   });
 
   server.registerTool("search_books", {
-    description: "Search books by title, author, tag, or series name.",
+    description: "Search books by title, author, tag, or series name. Supports Calibre's search syntax (e.g. author:Asimov, tag:sci-fi).",
     inputSchema: {
       query: z.string().describe("Search query"),
       limit: z.number().optional().describe("Max results (default 20)"),
       offset: z.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ query, limit, offset }) => {
-    const books = searchBooks(query, { limit: limit ?? 20, offset: offset ?? 0 });
+    const result = await searchBooks(query, { limit: limit ?? 20, offset: offset ?? 0 });
     return {
-      content: [{ type: "text", text: JSON.stringify({ results: books, count: books.length }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
   });
 
   server.registerTool("list_authors", {
     description: "List all authors in the library with book counts.",
   }, async () => {
+    const authors = await listAuthors();
     return {
-      content: [{ type: "text", text: JSON.stringify(listAuthors(), null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(authors, null, 2) }],
     };
   });
 
   server.registerTool("list_tags", {
     description: "List all tags in the library with book counts.",
   }, async () => {
+    const tags = await listTags();
     return {
-      content: [{ type: "text", text: JSON.stringify(listTags(), null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(tags, null, 2) }],
     };
   });
 
   server.registerTool("list_series", {
     description: "List all series in the library with book counts.",
   }, async () => {
+    const series = await listSeries();
     return {
-      content: [{ type: "text", text: JSON.stringify(listSeries(), null, 2) }],
-    };
-  });
-
-  server.registerTool("list_read_books", {
-    description: "List books that have been read, sorted by most recently read. Includes read date and authors.",
-    inputSchema: {
-      limit: z.number().optional().describe("Max books to return (default 20)"),
-      offset: z.number().optional().describe("Offset for pagination (default 0)"),
-    },
-  }, async ({ limit, offset }) => {
-    const books = listReadBooks({ limit: limit ?? 20, offset: offset ?? 0 });
-    return {
-      content: [{ type: "text", text: JSON.stringify(books, null, 2) }],
-    };
-  });
-
-  server.registerTool("list_unread_books", {
-    description: "List books that have NOT been read yet, sorted by most recently added.",
-    inputSchema: {
-      limit: z.number().optional().describe("Max books to return (default 20)"),
-      offset: z.number().optional().describe("Offset for pagination (default 0)"),
-    },
-  }, async ({ limit, offset }) => {
-    const books = listUnreadBooks({ limit: limit ?? 20, offset: offset ?? 0 });
-    return {
-      content: [{ type: "text", text: JSON.stringify(books, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(series, null, 2) }],
     };
   });
 
   server.registerTool("get_download_link", {
-    description: "Get a temporary download link for a book file. Returns a signed URL that expires in 5 minutes.",
+    description: "Get a download link for a book file. Returns the Calibre server URL for the file.",
     inputSchema: {
       id: z.number().describe("The book ID"),
       format: z.string().describe("File format (e.g. EPUB, PDF, MOBI)"),
     },
   }, async ({ id, format }) => {
-    const filePath = getBookFilePath(id, format);
-    if (!filePath) {
-      return {
-        content: [{ type: "text", text: `No ${format.toUpperCase()} file found for book ${id}.` }],
-        isError: true,
-      };
-    }
-    const urlPath = `/download/${id}/${format.toUpperCase()}`;
-    const url = createSignedUrl(BASE_URL, urlPath);
+    const url = getDownloadUrl(id, format);
     return {
       content: [{ type: "text", text: url }],
     };
@@ -146,56 +112,38 @@ export function createMcpServer(): McpServer {
     };
   });
 
-  server.registerTool("add_book", {
-    description: "Add a book to the Calibre library by file path (for files already on the server).",
-    inputSchema: {
-      file_path: z.string().describe("Absolute path to the book file on the server"),
-    },
-  }, async ({ file_path }) => {
-    try {
-      const result = await addBook(file_path);
-      return {
-        content: [{ type: "text", text: result || "Book added successfully." }],
-      };
-    } catch (e: any) {
-      return {
-        content: [{ type: "text", text: e.message }],
-        isError: true,
-      };
-    }
-  });
-
-  server.registerTool("fetch_metadata", {
-    description: "Search online for book metadata by title and optionally author. Returns metadata from various sources (Amazon, Google, etc.).",
-    inputSchema: {
-      title: z.string().describe("Book title to search for"),
-      authors: z.string().optional().describe("Author name to narrow the search"),
-    },
-  }, async ({ title, authors }) => {
-    try {
-      const result = await fetchMetadata(title, authors);
-      return {
-        content: [{ type: "text", text: result }],
-      };
-    } catch (e: any) {
-      return {
-        content: [{ type: "text", text: e.message }],
-        isError: true,
-      };
-    }
-  });
-
   server.registerTool("set_metadata", {
-    description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors, tags, series, publisher, rating, comments, etc.",
+    description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
     inputSchema: {
       id: z.number().describe("The book ID"),
-      fields: z.record(z.string(), z.string()).describe("Key-value pairs of metadata fields to set (e.g. {\"title\": \"New Title\", \"tags\": \"fiction,sci-fi\"})"),
+      fields: z.record(z.string(), z.unknown()).describe('Metadata fields to set (e.g. {"title": "New Title", "tags": ["fiction", "sci-fi"], "authors": ["Author Name"]})'),
     },
   }, async ({ id, fields }) => {
     try {
-      const result = await setMetadata(id, fields);
+      await setMetadata(id, fields as Record<string, unknown>);
       return {
-        content: [{ type: "text", text: result || "Metadata updated successfully." }],
+        content: [{ type: "text", text: "Metadata updated successfully." }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("convert_book", {
+    description: "Convert a book to a different format (e.g. EPUB to MOBI). This may take a few minutes.",
+    inputSchema: {
+      id: z.number().describe("The book ID"),
+      from_format: z.string().describe("Source format (e.g. EPUB)"),
+      to_format: z.string().describe("Target format (e.g. MOBI, PDF, AZW3)"),
+    },
+  }, async ({ id, from_format, to_format }) => {
+    try {
+      const result = await convertBook(id, from_format, to_format);
+      return {
+        content: [{ type: "text", text: result }],
       };
     } catch (e: any) {
       return {

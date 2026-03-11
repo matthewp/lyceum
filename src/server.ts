@@ -1,10 +1,6 @@
 import { createServer } from "node:http";
-import { createReadStream, statSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
-import { basename, join } from "node:path";
-import { tmpdir } from "node:os";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createMcpServer } from "./mcp.ts";
-import { listBooks, getBook, countBooks, getBookFilePath } from "./db.ts";
 import {
   registerClient,
   createAuthCode,
@@ -184,49 +180,6 @@ const server = createServer(async (req, res) => {
     }
   }
 
-  // --- Download Endpoint (signed URL) ---
-  const downloadMatch = path.match(/^\/download\/(\d+)\/([A-Z]+)$/);
-  if (req.method === "GET" && downloadMatch) {
-    const id = parseInt(downloadMatch[1], 10);
-    const format = downloadMatch[2];
-    const expires = url.searchParams.get("expires") ?? "";
-    const sig = url.searchParams.get("sig") ?? "";
-
-    if (!verifySignedUrl(path, expires, sig)) {
-      json(res, { error: "Invalid or expired download link" }, 403);
-      return;
-    }
-
-    const filePath = getBookFilePath(id, format);
-    if (!filePath) {
-      json(res, { error: "File not found" }, 404);
-      return;
-    }
-
-    try {
-      const stat = statSync(filePath);
-      const filename = basename(filePath);
-      const contentTypes: Record<string, string> = {
-        EPUB: "application/epub+zip",
-        PDF: "application/pdf",
-        MOBI: "application/x-mobipocket-ebook",
-        AZW3: "application/x-mobi8-ebook",
-        CBZ: "application/x-cbz",
-        CBR: "application/x-cbr",
-      };
-
-      res.writeHead(200, {
-        "Content-Type": contentTypes[format] ?? "application/octet-stream",
-        "Content-Length": stat.size,
-        "Content-Disposition": `attachment; filename="${filename}"`,
-      });
-      createReadStream(filePath).pipe(res);
-    } catch {
-      json(res, { error: "File not found on disk" }, 404);
-    }
-    return;
-  }
-
   // --- Upload Endpoint (signed URL) ---
   if (path === "/upload") {
     const expires = url.searchParams.get("expires") ?? "";
@@ -252,48 +205,20 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const tmpDir = mkdtempSync(join(tmpdir(), "lyceum-"));
-      const tmpFile = join(tmpDir, file.filename);
-
       try {
-        writeFileSync(tmpFile, file.data);
-        const result = await addBook(tmpFile);
+        const result = await addBook(file.filename, file.data);
         html(res, UPLOAD_HTML.replace(
           "</form>",
-          `<p class="success">Uploaded ${file.filename}. ${result}</p></form>`
+          `<p class="success">Added "${result.title}" (ID: ${result.book_id})</p></form>`
         ));
       } catch (e: any) {
         html(res, UPLOAD_HTML.replace(
           "</form>",
           `<p class="error">Upload failed: ${e.message}</p></form>`
         ), 500);
-      } finally {
-        rmSync(tmpDir, { recursive: true, force: true });
       }
       return;
     }
-  }
-
-  // --- REST Endpoints ---
-  if (req.method === "GET" && path === "/books") {
-    const limit = parseInt(url.searchParams.get("limit") ?? "50", 10);
-    const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
-    const books = listBooks({ limit, offset });
-    const total = countBooks();
-    json(res, { books, total, limit, offset });
-    return;
-  }
-
-  const bookMatch = path.match(/^\/books\/(\d+)$/);
-  if (req.method === "GET" && bookMatch) {
-    const id = parseInt(bookMatch[1], 10);
-    const book = getBook(id);
-    if (!book) {
-      json(res, { error: "Book not found" }, 404);
-      return;
-    }
-    json(res, book);
-    return;
   }
 
   json(res, { error: "Not found" }, 404);
