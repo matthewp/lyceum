@@ -1,6 +1,6 @@
 # Lyceum
 
-An MCP server for querying and managing a Calibre library via chat. Talks to Calibre's built-in content server over HTTP — no direct database access or CLI tools needed.
+An MCP server for querying and managing a [Calibre](https://calibre-ebook.com/) ebook library via chat. Works with [claude.ai](https://claude.ai) and [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Talks to Calibre's built-in content server over HTTP — no direct database access or CLI tools needed.
 
 ## Setup
 
@@ -8,7 +8,7 @@ An MCP server for querying and managing a Calibre library via chat. Talks to Cal
 npm install
 ```
 
-Requires a running [Calibre content server](https://manual.calibre-ebook.com/server.html):
+Requires a running [Calibre content server](https://manual.calibre-ebook.com/server.html). You can start one from the Calibre GUI (Preferences > Sharing over the net) or from the command line:
 
 ```bash
 calibre-server /path/to/library
@@ -21,7 +21,10 @@ calibre-server /path/to/library
 | `AUTH_PASSWORD` | Yes | — | Password for the OAuth authorization page |
 | `CALIBRE_SERVER_URL` | No | `http://localhost:8080` | URL of the Calibre content server |
 | `CALIBRE_LIBRARY_ID` | No | — | Library ID (only needed for multi-library setups) |
+| `CALIBRE_USERNAME` | No | — | Username for Calibre content server (Digest auth) |
+| `CALIBRE_PASSWORD` | No | — | Password for Calibre content server (Digest auth) |
 | `BASE_URL` | No | `http://localhost:3000` | Public URL of this server (used for OAuth redirects and signed URLs) |
+| `AUTH_STATE_FILE` | No | `/data/auth-state.json` | Path to persist OAuth state (clients, tokens) across restarts |
 | `PORT` | No | `3000` | Port to listen on |
 
 ## Running
@@ -39,29 +42,71 @@ AUTH_PASSWORD=your-secret \
   npm start
 ```
 
+## Container
+
+The included `Containerfile` builds a minimal image based on `node:24-slim`. Node 24 supports native TypeScript type stripping, so no build step is needed — the TypeScript source runs directly with the `--experimental-strip-types` flag.
+
+```bash
+podman build -t lyceum .
+```
+
+The container exposes port 3000. Mount a volume at `/data` to persist OAuth state across restarts:
+
+```bash
+podman run -d \
+  -p 3009:3000 \
+  -v lyceum-data:/data \
+  -e AUTH_PASSWORD=your-secret \
+  -e CALIBRE_SERVER_URL=http://calibre:8080 \
+  -e BASE_URL=https://lyceum.yourdomain.com \
+  lyceum
+```
+
+For sensitive values, use podman secrets:
+
+```bash
+printf 'your-secret' | podman secret create lyceum_auth_password -
+```
+
+Then reference them in a [quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) `.container` file:
+
+```ini
+Secret=lyceum_auth_password,type=env,target=AUTH_PASSWORD
+```
+
 ## MCP Tools
 
 | Tool | Description |
 |---|---|
 | `list_books` | List books sorted by most recently added |
-| `get_book` | Get full details for a book (authors, tags, series, formats, etc.) |
+| `get_book` | Get full details for a book (authors, tags, series, formats, custom columns, etc.) |
 | `search_books` | Search using Calibre's query syntax (e.g. `author:Asimov`, `tag:sci-fi`) |
 | `list_authors` | List all authors with book counts |
 | `list_tags` | List all tags with book counts |
 | `list_series` | List all series with book counts |
-| `get_download_link` | Get a download URL for a book file |
-| `get_upload_link` | Get a signed URL to upload a book via browser |
-| `set_metadata` | Update metadata fields on a book |
-| `convert_book` | Convert a book to a different format |
+| `get_download_link` | Get a signed download URL for a book file (expires in 5 minutes) |
+| `get_upload_link` | Get a signed URL to upload a book via browser (expires in 10 minutes) |
+| `set_metadata` | Update metadata fields on a book (title, authors, tags, custom columns, etc.) |
+| `set_cover` | Set a book's cover image from a URL |
+| `fetch_metadata` | Search Google Books for metadata by title, author, or ISBN |
+| `convert_book` | Convert a book to a different format (e.g. EPUB to PDF) |
 
 ## Connecting to Claude
 
-Add as a remote MCP server in Claude Code:
+### claude.ai
+
+Go to **Settings > Connectors > Add custom connector** and enter your server's `/mcp` URL (e.g. `https://lyceum.yourdomain.com/mcp`). You'll be prompted to authenticate via the OAuth flow.
+
+### Claude Code
 
 ```bash
-claude mcp add --transport http lyceum http://localhost:3000/mcp
+claude mcp add --transport http lyceum https://lyceum.yourdomain.com/mcp
 ```
 
-Then run `/mcp` to authenticate via the OAuth flow.
+## Authentication
 
-For claude.ai, go to Settings > Connectors > Add custom connector and enter your server's `/mcp` URL.
+Lyceum uses OAuth 2.1 with dynamic client registration. When a client connects, it registers automatically, then the user authenticates with the `AUTH_PASSWORD`. Sessions are persisted to disk so they survive server restarts.
+
+Download and upload links use HMAC-SHA256 signed URLs so they can be opened in a browser without additional authentication.
+
+Communication with the Calibre content server uses HTTP Digest authentication when `CALIBRE_USERNAME` and `CALIBRE_PASSWORD` are set.

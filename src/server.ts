@@ -12,7 +12,7 @@ import {
   UPLOAD_HTML,
 } from "./auth.ts";
 import { parseMultipart } from "./multipart.ts";
-import { addBook } from "./calibre.ts";
+import { addBook, downloadBook } from "./calibre.ts";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
@@ -181,6 +181,39 @@ const server = createServer(async (req, res) => {
   }
 
   // --- Upload Endpoint (signed URL) ---
+  if (path.startsWith("/download/")) {
+    const expires = url.searchParams.get("expires") ?? "";
+    const sig = url.searchParams.get("sig") ?? "";
+    const downloadPath = path.replace("/download", "");
+
+    if (!verifySignedUrl(path, expires, sig)) {
+      json(res, { error: "Invalid or expired download link" }, 403);
+      return;
+    }
+
+    try {
+      const upstream = await downloadBook(downloadPath);
+      if (!upstream.ok) {
+        res.writeHead(upstream.status);
+        res.end();
+        return;
+      }
+      const headers: Record<string, string> = {};
+      const ct = upstream.headers.get("content-type");
+      if (ct) headers["Content-Type"] = ct;
+      const cd = upstream.headers.get("content-disposition");
+      if (cd) headers["Content-Disposition"] = cd;
+      const cl = upstream.headers.get("content-length");
+      if (cl) headers["Content-Length"] = cl;
+      res.writeHead(200, headers);
+      const body = new Uint8Array(await upstream.arrayBuffer());
+      res.end(body);
+    } catch (e: any) {
+      json(res, { error: e.message }, 500);
+    }
+    return;
+  }
+
   if (path === "/upload") {
     const expires = url.searchParams.get("expires") ?? "";
     const sig = url.searchParams.get("sig") ?? "";

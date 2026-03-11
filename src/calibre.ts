@@ -214,8 +214,10 @@ export async function listSeries() {
   }));
 }
 
-export function getDownloadUrl(id: number, format: string): string {
-  return `${CALIBRE_SERVER}${libraryPath(`/get/${format.toLowerCase()}/${id}`)}`;
+export async function downloadBook(path: string): Promise<Response> {
+  const url = `${CALIBRE_SERVER}${libraryPath(`/get${path}`)}`;
+  console.log(`[calibre] GET ${url} (download)`);
+  return digestFetch(url);
 }
 
 // --- Write operations ---

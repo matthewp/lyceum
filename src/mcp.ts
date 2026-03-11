@@ -7,7 +7,6 @@ import {
   listAuthors,
   listTags,
   listSeries,
-  getDownloadUrl,
   setMetadata,
   setCover,
   convertBook,
@@ -93,13 +92,14 @@ export function createMcpServer(): McpServer {
   });
 
   server.registerTool("get_download_link", {
-    description: "Get a download link for a book file. Returns the Calibre server URL for the file.",
+    description: "Get a temporary download link for a book file. Returns a signed URL that expires in 5 minutes.",
     inputSchema: {
       id: z.number().describe("The book ID"),
       format: z.string().describe("File format (e.g. EPUB, PDF, MOBI)"),
     },
   }, async ({ id, format }) => {
-    const url = getDownloadUrl(id, format);
+    const path = `/download/${format.toLowerCase()}/${id}`;
+    const url = createSignedUrl(BASE_URL, path, 300);
     return {
       content: [{ type: "text", text: url }],
     };
