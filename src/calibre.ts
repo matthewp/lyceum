@@ -1,7 +1,82 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash, randomBytes } from "node:crypto";
 
 const CALIBRE_SERVER = process.env.CALIBRE_SERVER_URL ?? "http://localhost:8080";
 const LIBRARY_ID = process.env.CALIBRE_LIBRARY_ID ?? "";
+const CALIBRE_USERNAME = process.env.CALIBRE_USERNAME ?? "";
+const CALIBRE_PASSWORD = process.env.CALIBRE_PASSWORD ?? "";
+
+function md5(data: string): string {
+  return createHash("md5").update(data).digest("hex");
+}
+
+interface DigestChallenge {
+  realm: string;
+  nonce: string;
+  qop?: string;
+  opaque?: string;
+}
+
+function parseDigestChallenge(header: string): DigestChallenge {
+  const params: Record<string, string> = {};
+  const body = header.replace(/^Digest\s+/i, "");
+  const re = /(\w+)=(?:"([^"]*)"|([^\s,]*))/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body))) {
+    params[m[1]] = m[2] ?? m[3];
+  }
+  return params as unknown as DigestChallenge;
+}
+
+function buildDigestHeader(
+  challenge: DigestChallenge,
+  method: string,
+  uri: string,
+): string {
+  const cnonce = randomBytes(16).toString("hex");
+  const nc = "00000001";
+  const ha1 = md5(`${CALIBRE_USERNAME}:${challenge.realm}:${CALIBRE_PASSWORD}`);
+  const ha2 = md5(`${method}:${uri}`);
+
+  let response: string;
+  if (challenge.qop?.includes("auth")) {
+    response = md5(`${ha1}:${challenge.nonce}:${nc}:${cnonce}:auth:${ha2}`);
+  } else {
+    response = md5(`${ha1}:${challenge.nonce}:${ha2}`);
+  }
+
+  let header =
+    `Digest username="${CALIBRE_USERNAME}", realm="${challenge.realm}", ` +
+    `nonce="${challenge.nonce}", uri="${uri}", response="${response}"`;
+
+  if (challenge.qop?.includes("auth")) {
+    header += `, qop=auth, nc=${nc}, cnonce="${cnonce}"`;
+  }
+  if (challenge.opaque) {
+    header += `, opaque="${challenge.opaque}"`;
+  }
+  return header;
+}
+
+async function digestFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (!CALIBRE_USERNAME) {
+    return fetch(url, init);
+  }
+
+  const initial = await fetch(url, { ...init, redirect: "manual" });
+  if (initial.status !== 401) return initial;
+
+  const wwwAuth = initial.headers.get("www-authenticate");
+  if (!wwwAuth || !wwwAuth.toLowerCase().startsWith("digest")) return initial;
+
+  const challenge = parseDigestChallenge(wwwAuth);
+  const method = (init.method ?? "GET").toUpperCase();
+  const uri = new URL(url).pathname + new URL(url).search;
+
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", buildDigestHeader(challenge, method, uri));
+
+  return fetch(url, { ...init, headers });
+}
 
 function libraryPath(path: string): string {
   return LIBRARY_ID ? `${path}/${LIBRARY_ID}` : path;
@@ -11,7 +86,7 @@ async function get(path: string): Promise<any> {
   const url = `${CALIBRE_SERVER}${path}`;
   console.log(`[calibre] GET ${url}`);
   try {
-    const res = await fetch(url);
+    const res = await digestFetch(url);
     console.log(`[calibre] GET ${url} -> ${res.status}`);
     if (!res.ok) {
       const body = await res.text();
@@ -30,7 +105,7 @@ async function post(path: string, body: unknown): Promise<any> {
   const url = `${CALIBRE_SERVER}${path}`;
   console.log(`[calibre] POST ${url}`);
   try {
-    const res = await fetch(url, {
+    const res = await digestFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -154,7 +229,7 @@ export async function addBook(
   const dupes = addDuplicates ? "y" : "n";
   const path = libraryPath(`/cdb/add-book/${jobId}/${dupes}/${encodeURIComponent(filename)}`);
 
-  const res = await fetch(`${CALIBRE_SERVER}${path}`, {
+  const res = await digestFetch(`${CALIBRE_SERVER}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/octet-stream" },
     body: new Uint8Array(data),

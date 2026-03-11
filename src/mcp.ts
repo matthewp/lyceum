@@ -12,6 +12,7 @@ import {
   convertBook,
 } from "./calibre.ts";
 import { createSignedUrl } from "./auth.ts";
+import { fetchMetadata } from "./metadata.ts";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 
@@ -144,6 +145,32 @@ export function createMcpServer(): McpServer {
       const result = await convertBook(id, from_format, to_format);
       return {
         content: [{ type: "text", text: result }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("fetch_metadata", {
+    description: "Search online for book metadata by title, author, or ISBN. Returns multiple results from Google Books that the user can choose from. Use this when a book's metadata is missing or incorrect.",
+    inputSchema: {
+      title: z.string().describe("Book title to search for"),
+      authors: z.string().optional().describe("Author name to narrow the search"),
+      isbn: z.string().optional().describe("ISBN to search for (most precise)"),
+    },
+  }, async ({ title, authors, isbn }) => {
+    try {
+      const results = await fetchMetadata(title, authors, isbn);
+      if (results.length === 0) {
+        return {
+          content: [{ type: "text", text: "No metadata results found." }],
+        };
+      }
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
       };
     } catch (e: any) {
       return {
