@@ -240,7 +240,7 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Calibre API listening on ${BASE_URL}`);
+  console.log(`Lyceum listening on ${BASE_URL}`);
   console.log(`MCP endpoint: ${BASE_URL}/mcp`);
   console.log(`OAuth metadata: ${BASE_URL}/.well-known/oauth-authorization-server`);
 });

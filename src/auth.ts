@@ -102,7 +102,7 @@ export function verifySignedUrl(path: string, expires: string, signature: string
 export const AUTHORIZE_HTML = `<!DOCTYPE html>
 <html>
 <head>
-  <title>Calibre API - Authorize</title>
+  <title>Lyceum - Authorize</title>
   <style>
     body { font-family: system-ui; max-width: 400px; margin: 80px auto; padding: 0 20px; }
     h1 { font-size: 1.4em; }
@@ -113,7 +113,7 @@ export const AUTHORIZE_HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h1>Calibre API</h1>
+  <h1>Lyceum</h1>
   <p>An application is requesting access to your Calibre library.</p>
   <form method="POST">
     <input type="hidden" name="client_id" value="CLIENT_ID">

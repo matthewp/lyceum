@@ -18,7 +18,7 @@ const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 
 export function createMcpServer(): McpServer {
   const server = new McpServer({
-    name: "calibre",
+    name: "lyceum",
     version: "1.0.0",
   });
 
