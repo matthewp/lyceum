@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 import OSS from "ali-oss";
+import { logger as root } from "../logger.ts";
 import type { DeviceProvider, DeviceInfo } from "./index.ts";
+
+const log = root.child({ module: "boox" });
 
 const API_HOSTS = new Map([
   ["us", "https://push.boox.com"],
@@ -36,13 +39,13 @@ async function booxFetch(
   try {
     res = await fetch(url, { ...opts, headers });
   } catch (e: any) {
-    console.error(`[boox] ${opts.method ?? "GET"} ${path} fetch failed:`, e.message);
+    log.error({ method: opts.method ?? "GET", path, err: e }, "Fetch failed");
     throw new Error(`Boox request failed: ${e.message}`);
   }
 
   if (!res.ok) {
     const body = await res.text();
-    console.error(`[boox] ${opts.method ?? "GET"} ${path} -> ${res.status}`);
+    log.error({ method: opts.method ?? "GET", path, status: res.status }, "Request failed");
     throw new Error(`Boox API error (${res.status}): ${body}`);
   }
   return res.json();
@@ -130,7 +133,7 @@ export class BooxProvider implements DeviceProvider {
       bucket: cloudBucket.bucket,
     });
 
-    console.log(`[boox] Uploading ${file.length} bytes`);
+    log.info({ bytes: file.length }, "Uploading to OSS");
     await ossClient.multipartUpload(objectKey, file, {
       headers: { "Content-Type": `application/${ext === "epub" ? "epub+zip" : ext}` },
     });
@@ -174,7 +177,7 @@ export class BooxProvider implements DeviceProvider {
     const revHash = md5(content);
     const rev = `1-${revHash}`;
 
-    console.log("[boox] Syncing to device");
+    log.info("Syncing to device");
     const bulkRes = await fetch(`${host}/neocloud/_bulk_docs`, {
       method: "POST",
       headers: {
@@ -203,7 +206,7 @@ export class BooxProvider implements DeviceProvider {
 
     if (!bulkRes.ok) {
       const body = await bulkRes.text();
-      console.error(`[boox] _bulk_docs failed: ${bulkRes.status}`);
+      log.error({ status: bulkRes.status }, "Sync Gateway _bulk_docs failed");
       throw new Error(`Sync Gateway _bulk_docs failed (${bulkRes.status}): ${body}`);
     }
 
@@ -223,6 +226,6 @@ export class BooxProvider implements DeviceProvider {
         cbMsg: { id: docId, rev },
       }),
     }, token);
-    console.log("[boox] Send complete");
+    log.info("Send complete");
   }
 }

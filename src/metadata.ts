@@ -1,3 +1,7 @@
+import { logger as root } from "./logger.ts";
+
+const log = root.child({ module: "metadata" });
+
 export interface MetadataResult {
   source: string;
   title: string;
@@ -44,11 +48,9 @@ async function searchGoogleBooks(
   }
 
   const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=5`;
-  console.log(`[metadata] Google Books: ${url}`);
-
   const res = await fetch(url);
   if (!res.ok) {
-    console.error(`[metadata] Google Books error: ${res.status}`);
+    log.error({ status: res.status }, "Google Books request failed");
     return [];
   }
 

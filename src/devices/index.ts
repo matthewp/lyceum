@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { logger as root } from "../logger.ts";
 import { BooxProvider } from "./boox.ts";
+
+const log = root.child({ module: "devices" });
 
 // --- Interfaces ---
 
@@ -46,7 +49,7 @@ function saveDevices(devices: DeviceInfo[]): void {
     mkdirSync(dirname(DEVICES_FILE), { recursive: true });
     writeFileSync(DEVICES_FILE, JSON.stringify(devices, null, 2));
   } catch (e: any) {
-    console.error(`[devices] Failed to save: ${e.message}`);
+    log.error({ err: e }, "Failed to save devices");
   }
 }
 
@@ -95,7 +98,7 @@ export async function verifyDevice(
   saveDevices(devices);
   pendingAuths.delete(name);
 
-  console.log(`[devices] Added device "${name}" (${pending.type})`);
+  log.info({ name, type: pending.type }, "Device added");
   return device;
 }
 
@@ -109,7 +112,7 @@ export function removeDevice(name: string): void {
   if (idx === -1) throw new Error(`Device "${name}" not found`);
   devices.splice(idx, 1);
   saveDevices(devices);
-  console.log(`[devices] Removed device "${name}"`);
+  log.info({ name }, "Device removed");
 }
 
 export async function sendToDevice(
@@ -125,5 +128,5 @@ export async function sendToDevice(
   if (!provider) throw new Error(`No provider for device type "${device.type}"`);
 
   await provider.sendFile(device, file, filename);
-  console.log(`[devices] Sent to "${deviceName}"`);
+  log.info({ device: deviceName }, "Sent to device");
 }

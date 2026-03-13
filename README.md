@@ -25,6 +25,7 @@ calibre-server /path/to/library
 | `CALIBRE_PASSWORD` | No | — | Password for Calibre content server (Digest auth) |
 | `BASE_URL` | No | `http://localhost:3000` | Public URL of this server (used for OAuth redirects and signed URLs) |
 | `AUTH_STATE_FILE` | No | `/data/auth-state.json` | Path to persist OAuth state (clients, tokens) across restarts |
+| `DEVICES_FILE` | No | `/data/devices.json` | Path to persist configured e-reader devices |
 | `PORT` | No | `3000` | Port to listen on |
 
 ## Running
@@ -96,6 +97,11 @@ Secret=lyceum_auth_password,type=env,target=AUTH_PASSWORD
 | `set_cover` | Set a book's cover image from a URL |
 | `fetch_metadata` | Search Google Books for metadata by title, author, or ISBN |
 | `convert_book` | Convert a book to a different format (e.g. EPUB to PDF) |
+| `add_device` | Start adding an e-reader device (sends a verification code) |
+| `verify_device` | Complete device setup with the verification code |
+| `list_devices` | List all configured e-reader devices |
+| `remove_device` | Remove a configured device |
+| `send_to_device` | Send a book to an e-reader device |
 
 ## Connecting to Claude
 
@@ -108,6 +114,20 @@ Go to **Settings > Connectors > Add custom connector** and enter your server's `
 ```bash
 claude mcp add --transport http lyceum https://lyceum.yourdomain.com/mcp
 ```
+
+## Send to Device
+
+Lyceum can send books directly to e-reader devices. Currently supported:
+
+### Boox
+
+Send books to [Boox](https://www.boox.com/) e-readers via the Send2Boox cloud service. To set up, ask Claude to add your device — it will walk you through the flow:
+
+1. **Add device**: Provide your Boox account email and region (`us`, `eu`, or `cn`). A verification code is sent to your email.
+2. **Verify**: Enter the code to complete setup. The device is saved and ready to use.
+3. **Send**: Ask Claude to send any book in your library to the device by name.
+
+Device credentials are persisted to `DEVICES_FILE` so they survive restarts.
 
 ## Authentication
 

@@ -1,10 +1,13 @@
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { logger as root } from "./logger.ts";
+
+const log = root.child({ module: "auth" });
 
 const PASSWORD = process.env.AUTH_PASSWORD;
 if (!PASSWORD) {
-  console.error("AUTH_PASSWORD environment variable is required");
+  log.fatal("AUTH_PASSWORD environment variable is required");
   process.exit(1);
 }
 
@@ -29,9 +32,9 @@ function loadState(): void {
     }
     for (const t of data.accessTokens ?? []) accessTokens.add(t);
     for (const [k, v] of Object.entries(data.clients ?? {})) clients.set(k, v);
-    console.log(`[auth] Loaded state: ${clients.size} clients, ${accessTokens.size} tokens`);
+    log.info({ clients: clients.size, tokens: accessTokens.size }, "Loaded state");
   } catch {
-    console.log("[auth] No existing state file, starting fresh");
+    log.info("No existing state file, starting fresh");
   }
 }
 
@@ -45,7 +48,7 @@ function saveState(): void {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
   } catch (e: any) {
-    console.error(`[auth] Failed to save state: ${e.message}`);
+    log.error({ err: e }, "Failed to save state");
   }
 }
 
