@@ -212,11 +212,11 @@ export function createMcpServer(): McpServer {
   // --- Device tools ---
 
   server.registerTool("add_device", {
-    description: "Start adding an e-reader device. For Boox devices, params should include email and optionally region (eu or us, defaults to eu). A verification code will be sent to the email.",
+    description: "Start adding an e-reader device. For Boox: params should include email and optionally region (us, eu, or cn, defaults to eu). A verification code will be sent. For Xteink: params should include email and password. Logs in and lists bound devices.",
     inputSchema: {
-      type: z.string().describe("Device type (e.g. boox)"),
+      type: z.enum(["boox", "xteink"]).describe("Device type: boox (Boox e-readers via Send2Boox) or xteink (Xteink X3/X4 via XT Cloud)"),
       name: z.string().describe("A friendly name for this device"),
-      params: z.record(z.string(), z.string()).describe("Type-specific parameters (e.g. {email, region} for Boox)"),
+      params: z.record(z.string(), z.string()).describe("Type-specific parameters. Boox: {email, region?}. Xteink: {email, password}."),
     },
   }, async ({ type, name, params }) => {
     try {

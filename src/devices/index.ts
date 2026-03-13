@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { logger as root } from "../logger.ts";
 import { BooxProvider } from "./boox.ts";
+import { XteinkProvider } from "./xteink.ts";
 
 const log = root.child({ module: "devices" });
 
@@ -30,6 +31,7 @@ interface PendingAuth {
 
 const providers: Record<string, DeviceProvider> = {
   boox: new BooxProvider(),
+  xteink: new XteinkProvider(),
 };
 
 // --- Persistence ---

@@ -127,6 +127,16 @@ Send books to [Boox](https://www.boox.com/) e-readers via the Send2Boox cloud se
 2. **Verify**: Enter the code to complete setup. The device is saved and ready to use.
 3. **Send**: Ask Claude to send any book in your library to the device by name.
 
+### Xteink
+
+Send books to [Xteink](https://www.xteink.com/) e-readers (X3, X4) via the XT Cloud service. The device polls for new files approximately every 30 seconds.
+
+1. **Add device**: Provide your Xteink account email and password. Lyceum logs in and lists your bound devices.
+2. **Verify**: Select which device to use (by number if you have multiple).
+3. **Send**: Ask Claude to send any book to the device. It appears in the "Pushed Files" folder.
+
+Note: The Xteink cloud API communicates over unencrypted HTTP.
+
 Device credentials are persisted to `DEVICES_FILE` so they survive restarts.
 
 ## Authentication
