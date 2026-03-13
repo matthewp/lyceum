@@ -58,18 +58,20 @@ function buildDigestHeader(
 }
 
 async function digestFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+
   if (!CALIBRE_USERNAME) {
     return fetch(url, init);
   }
 
   const initial = await fetch(url, { ...init, redirect: "manual" });
+
   if (initial.status !== 401) return initial;
 
   const wwwAuth = initial.headers.get("www-authenticate");
   if (!wwwAuth || !wwwAuth.toLowerCase().startsWith("digest")) return initial;
 
   const challenge = parseDigestChallenge(wwwAuth);
-  const method = (init.method ?? "GET").toUpperCase();
   const uri = new URL(url).pathname + new URL(url).search;
 
   const headers = new Headers(init.headers);
@@ -84,52 +86,32 @@ function libraryPath(path: string): string {
 
 async function get(path: string): Promise<any> {
   const url = `${CALIBRE_SERVER}${path}`;
-  console.log(`[calibre] GET ${url}`);
-  try {
-    const res = await digestFetch(url);
-    console.log(`[calibre] GET ${url} -> ${res.status}`);
-    if (!res.ok) {
-      const body = await res.text();
-      console.error(`[calibre] GET ${url} error: ${body}`);
-      throw new Error(`Calibre server error (${res.status}): ${body}`);
-    }
-    return res.json();
-  } catch (e: any) {
-    if (e.message.startsWith("Calibre server error")) throw e;
-    console.error(`[calibre] GET ${url} fetch failed:`, e.message);
-    throw e;
+  const res = await digestFetch(url);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Calibre server error (${res.status}): ${body}`);
   }
+  return res.json();
 }
 
 async function post(path: string, body: unknown): Promise<any> {
   const url = `${CALIBRE_SERVER}${path}`;
-  console.log(`[calibre] POST ${url}`);
+  const res = await digestFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Calibre server error (${res.status}): ${text}`);
+
   try {
-    const res = await digestFetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    const text = await res.text();
-    console.log(`[calibre] POST ${url} -> ${res.status}`);
-    if (!res.ok) {
-      console.error(`[calibre] POST ${url} error: ${text}`);
-      throw new Error(`Calibre server error (${res.status}): ${text}`);
-    }
-
-    try {
-      const json = JSON.parse(text);
-      if (json.err) throw new Error(json.err);
-      return json;
-    } catch (e: any) {
-      if (e.message.startsWith("Calibre server error")) throw e;
-      return text;
-    }
+    const json = JSON.parse(text);
+    if (json.err) throw new Error(json.err);
+    return json;
   } catch (e: any) {
     if (e.message.startsWith("Calibre server error")) throw e;
-    console.error(`[calibre] POST ${url} fetch failed:`, e.message);
-    throw e;
+    return text;
   }
 }
 
@@ -214,9 +196,13 @@ export async function listSeries() {
   }));
 }
 
+export function bookDownloadPath(format: string, id: number): string {
+  return `/${format.toUpperCase()}/${id}`;
+}
+
 export async function downloadBook(path: string): Promise<Response> {
-  const url = `${CALIBRE_SERVER}${libraryPath(`/get${path}`)}`;
-  console.log(`[calibre] GET ${url} (download)`);
+  const fullPath = libraryPath(`/get${path}`);
+  const url = `${CALIBRE_SERVER}${fullPath}`;
   return digestFetch(url);
 }
 
@@ -260,7 +246,6 @@ export async function setCover(bookId: number, imageUrl: string): Promise<void> 
 
   const path = libraryPath(`/cdb/set-cover/${bookId}`);
   const url = `${CALIBRE_SERVER}${path}`;
-  console.log(`[calibre] POST ${url} (cover ${imgData.length} bytes)`);
   const res = await digestFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/octet-stream" },

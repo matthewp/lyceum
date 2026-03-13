@@ -10,9 +10,18 @@ import {
   setMetadata,
   setCover,
   convertBook,
+  downloadBook,
+  bookDownloadPath,
 } from "./calibre.ts";
 import { createSignedUrl } from "./auth.ts";
 import { fetchMetadata } from "./metadata.ts";
+import {
+  addDevice,
+  verifyDevice,
+  listDevices,
+  removeDevice,
+  sendToDevice,
+} from "./devices/index.ts";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 
@@ -98,8 +107,7 @@ export function createMcpServer(): McpServer {
       format: z.string().describe("File format (e.g. EPUB, PDF, MOBI)"),
     },
   }, async ({ id, format }) => {
-    const path = `/download/${format.toLowerCase()}/${id}`;
-    const url = createSignedUrl(BASE_URL, path, 300);
+    const url = createSignedUrl(BASE_URL, `/download${bookDownloadPath(format, id)}`, 300);
     return {
       content: [{ type: "text", text: url }],
     };
@@ -192,6 +200,118 @@ export function createMcpServer(): McpServer {
       }
       return {
         content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  // --- Device tools ---
+
+  server.registerTool("add_device", {
+    description: "Start adding an e-reader device. For Boox devices, params should include email and optionally region (eu or us, defaults to eu). A verification code will be sent to the email.",
+    inputSchema: {
+      type: z.string().describe("Device type (e.g. boox)"),
+      name: z.string().describe("A friendly name for this device"),
+      params: z.record(z.string(), z.string()).describe("Type-specific parameters (e.g. {email, region} for Boox)"),
+    },
+  }, async ({ type, name, params }) => {
+    try {
+      const result = await addDevice(type, name, params);
+      return {
+        content: [{ type: "text", text: result.message }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("verify_device", {
+    description: "Complete device setup by providing the verification code received by email.",
+    inputSchema: {
+      name: z.string().describe("The device name used in add_device"),
+      code: z.string().describe("The verification code"),
+    },
+  }, async ({ name, code }) => {
+    try {
+      const device = await verifyDevice(name, { code });
+      return {
+        content: [{ type: "text", text: `Device "${device.name}" (${device.type}) added successfully.` }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("list_devices", {
+    description: "List all configured e-reader devices.",
+  }, async () => {
+    const devices = listDevices();
+    if (devices.length === 0) {
+      return {
+        content: [{ type: "text", text: "No devices configured. Use add_device to set one up." }],
+      };
+    }
+    return {
+      content: [{ type: "text", text: JSON.stringify(devices, null, 2) }],
+    };
+  });
+
+  server.registerTool("remove_device", {
+    description: "Remove a configured e-reader device.",
+    inputSchema: {
+      name: z.string().describe("The device name to remove"),
+    },
+  }, async ({ name }) => {
+    try {
+      removeDevice(name);
+      return {
+        content: [{ type: "text", text: `Device "${name}" removed.` }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("send_to_device", {
+    description: "Send a book to an e-reader device. Downloads the book from the Calibre library and sends it to the specified device.",
+    inputSchema: {
+      device_name: z.string().describe("Name of the target device"),
+      book_id: z.coerce.number().describe("The book ID"),
+      format: z.string().describe("File format (e.g. EPUB, PDF)"),
+    },
+  }, async ({ device_name, book_id, format }) => {
+    try {
+      // Get book metadata for the filename
+      const book = await getBook(book_id);
+      if (!book) throw new Error(`Book ${book_id} not found`);
+      const ext = format.toLowerCase();
+      const authors = (book.authors as string[])?.join(" & ") ?? "";
+      const rawName = authors ? `${book.title} - ${authors}.${ext}` : `${book.title}.${ext}`;
+      const filename = rawName.replace(/[:<>?*"|\\\/]/g, "_");
+
+      const downloadPath = bookDownloadPath(format, book_id);
+      const res = await downloadBook(downloadPath);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Failed to download book (${res.status}): ${body}`);
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      await sendToDevice(device_name, buf, filename);
+      return {
+        content: [{ type: "text", text: `"${book.title}" sent to "${device_name}".` }],
       };
     } catch (e: any) {
       return {
