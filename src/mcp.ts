@@ -30,6 +30,10 @@ export function createMcpServer(): McpServer {
   const server = new McpServer({
     name: "lyceum",
     version: "1.0.0",
+    icons: [{
+      src: `${BASE_URL}/public/favicon.png`,
+      mimeType: "image/png",
+    }],
   });
 
   server.registerTool("list_books", {
