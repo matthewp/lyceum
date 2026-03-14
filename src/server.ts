@@ -255,11 +255,9 @@ const server = createServer(async (req, res) => {
       }
 
       let coverDataUrl = "";
-      if (book.has_cover) {
-        const coverBuf = await getBookCover(bookId);
-        if (coverBuf) {
-          coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
-        }
+      const coverBuf = await getBookCover(bookId);
+      if (coverBuf) {
+        coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
       }
 
       html(res, viewBookHtml(book, coverDataUrl));
