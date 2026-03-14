@@ -1,4 +1,6 @@
 import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
+import { join, extname } from "node:path";
 import { logger as root } from "./logger.ts";
 
 const log = root.child({ module: "server" });
@@ -56,6 +58,36 @@ const server = createServer(async (req, res) => {
   // --- Landing Page ---
   if (req.method === "GET" && path === "/") {
     html(res, LANDING_HTML);
+    return;
+  }
+
+  // --- Static assets ---
+  if (req.method === "GET" && path.startsWith("/public/")) {
+    const MIME: Record<string, string> = {
+      ".webp": "image/webp",
+      ".png": "image/png",
+      ".ico": "image/x-icon",
+      ".svg": "image/svg+xml",
+    };
+    const fileName = path.slice("/public/".length);
+    if (fileName.includes("..") || fileName.includes("/")) {
+      json(res, { error: "Not found" }, 404);
+      return;
+    }
+    const ext = extname(fileName);
+    const contentType = MIME[ext];
+    if (!contentType) {
+      json(res, { error: "Not found" }, 404);
+      return;
+    }
+    try {
+      const filePath = join(import.meta.dirname!, "..", "public", fileName);
+      const data = readFileSync(filePath);
+      res.writeHead(200, { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" });
+      res.end(data);
+    } catch {
+      json(res, { error: "Not found" }, 404);
+    }
     return;
   }
 

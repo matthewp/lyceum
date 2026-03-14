@@ -1,5 +1,7 @@
 # Lyceum
 
+<img src="public/logo-readme.png" alt="Lyceum" width="200">
+
 An MCP server for querying and managing a [Calibre](https://calibre-ebook.com/) ebook library via chat. Works with [claude.ai](https://claude.ai) and [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Talks to Calibre's built-in content server over HTTP — no direct database access or CLI tools needed.
 
 ## Setup
@@ -96,6 +98,7 @@ Secret=lyceum_auth_password,type=env,target=AUTH_PASSWORD
 | `set_metadata` | Update metadata fields on a book (title, authors, tags, custom columns, etc.) |
 | `set_cover` | Set a book's cover image from a URL |
 | `fetch_metadata` | Search Google Books for metadata by title, author, or ISBN |
+| `remove_book` | Permanently remove one or more books from the library |
 | `convert_book` | Convert a book to a different format (e.g. EPUB to PDF) |
 | `add_device` | Start adding an e-reader device (sends a verification code) |
 | `verify_device` | Complete device setup with the verification code |

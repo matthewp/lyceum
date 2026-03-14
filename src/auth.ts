@@ -151,8 +151,10 @@ export const LANDING_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <title>Lyceum</title>
+  <link rel="icon" type="image/png" href="/public/favicon.png">
   <style>
     body { font-family: system-ui; max-width: 520px; margin: 80px auto; padding: 0 20px; color: #1a1a1a; }
+    .logo { display: block; width: 120px; height: auto; margin-bottom: 16px; background: #162238; padding: 12px; border-radius: 8px; }
     h1 { font-size: 1.6em; margin-bottom: 0.2em; }
     .tagline { color: #555; margin-top: 0; }
     .features { list-style: none; padding: 0; }
@@ -169,6 +171,7 @@ export const LANDING_HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
+  <img src="/public/logo.webp" alt="Lyceum" class="logo">
   <h1>Lyceum</h1>
   <p class="tagline">An <span class="mcp-badge">MCP</span> bridge to your Calibre library.</p>
   <p>Lyceum lets AI assistants browse, search, and manage your ebook collection through the Model Context Protocol.</p>
@@ -192,6 +195,7 @@ export const UPLOAD_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <title>Lyceum - Upload Book</title>
+  <link rel="icon" type="image/png" href="/public/favicon.png">
   <style>
     body { font-family: system-ui; max-width: 400px; margin: 80px auto; padding: 0 20px; }
     h1 { font-size: 1.4em; }
@@ -216,6 +220,7 @@ export const AUTHORIZE_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <title>Lyceum - Authorize</title>
+  <link rel="icon" type="image/png" href="/public/favicon.png">
   <style>
     body { font-family: system-ui; max-width: 400px; margin: 80px auto; padding: 0 20px; }
     h1 { font-size: 1.4em; }
