@@ -11,6 +11,7 @@ import {
   validateToken,
   verifySignedUrl,
   checkPassword,
+  LANDING_HTML,
   AUTHORIZE_HTML,
   UPLOAD_HTML,
 } from "./auth.ts";
@@ -51,6 +52,12 @@ function readBodyRaw(req: import("node:http").IncomingMessage): Promise<Buffer> 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", BASE_URL);
   const path = url.pathname;
+
+  // --- Landing Page ---
+  if (req.method === "GET" && path === "/") {
+    html(res, LANDING_HTML);
+    return;
+  }
 
   // --- OAuth Discovery ---
   if (req.method === "GET" && path === "/.well-known/oauth-authorization-server") {
