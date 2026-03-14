@@ -9,6 +9,7 @@ import {
   listSeries,
   setMetadata,
   setCover,
+  deleteBooks,
   convertBook,
   downloadBook,
   bookDownloadPath,
@@ -153,6 +154,26 @@ export function createMcpServer(): McpServer {
       await setCover(id, image_url);
       return {
         content: [{ type: "text", text: "Cover updated successfully." }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("remove_book", {
+    description: "Permanently remove one or more books from the Calibre library. This cannot be undone.",
+    inputSchema: {
+      ids: z.array(z.number()).describe("Array of book IDs to remove"),
+    },
+  }, async ({ ids }) => {
+    try {
+      await deleteBooks(ids);
+      const label = ids.length === 1 ? `Book ${ids[0]} removed.` : `${ids.length} books removed.`;
+      return {
+        content: [{ type: "text", text: label }],
       };
     } catch (e: any) {
       return {
