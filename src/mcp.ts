@@ -128,14 +128,16 @@ export function createMcpServer(): McpServer {
   });
 
   server.registerTool("get_view_link", {
-    description: "Get a temporary link to view a book's details page showing its cover and metadata. Returns a signed URL that expires in 10 minutes.",
+    description: "Get a temporary link to view a book's details page showing its cover and metadata. Returns a signed URL that expires in 10 minutes. IMPORTANT: Always present this URL as a markdown link like [View Book](url) so the full URL is preserved in the href.",
     inputSchema: {
       id: z.number().describe("The book ID"),
     },
   }, async ({ id }) => {
+    const book = await getBook(id);
     const url = createSignedUrl(BASE_URL, `/view/${id}`, 600);
+    const label = book ? `View "${book.title}"` : "View book";
     return {
-      content: [{ type: "text", text: url }],
+      content: [{ type: "text", text: `[${label}](${url})` }],
     };
   });
 
