@@ -61,6 +61,19 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // --- Favicon at root (for Google favicon indexing) ---
+  if (req.method === "GET" && path === "/favicon.ico") {
+    try {
+      const filePath = join(import.meta.dirname!, "..", "public", "favicon.png");
+      const data = readFileSync(filePath);
+      res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" });
+      res.end(data);
+    } catch {
+      json(res, { error: "Not found" }, 404);
+    }
+    return;
+  }
+
   // --- Static assets ---
   if (req.method === "GET" && path.startsWith("/public/")) {
     const MIME: Record<string, string> = {
