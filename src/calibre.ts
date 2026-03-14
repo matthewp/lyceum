@@ -300,6 +300,20 @@ export async function convertBook(
   throw new Error("Conversion timed out after 4 minutes");
 }
 
+export async function getBookCover(id: number): Promise<Buffer | null> {
+  const path = libraryPath(`/ajax/book/${id}`);
+  try {
+    const book = await get(path);
+    if (!book.cover) return null;
+    const url = `${CALIBRE_SERVER}${book.cover}`;
+    const res = await digestFetch(url);
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 // --- Helpers ---
 
 function encodeHex(s: string): string {

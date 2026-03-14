@@ -18,7 +18,7 @@ import {
   UPLOAD_HTML,
 } from "./auth.ts";
 import { parseMultipart } from "./multipart.ts";
-import { addBook, downloadBook } from "./calibre.ts";
+import { addBook, downloadBook, getBook, getBookCover } from "./calibre.ts";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
@@ -235,7 +235,41 @@ const server = createServer(async (req, res) => {
     }
   }
 
-  // --- Upload Endpoint (signed URL) ---
+  // --- View Book Details (signed URL) ---
+  const viewMatch = path.match(/^\/view\/(\d+)$/);
+  if (req.method === "GET" && viewMatch) {
+    const expires = url.searchParams.get("expires") ?? "";
+    const sig = url.searchParams.get("sig") ?? "";
+
+    if (!verifySignedUrl(path, expires, sig)) {
+      json(res, { error: "Invalid or expired view link" }, 403);
+      return;
+    }
+
+    const bookId = parseInt(viewMatch[1], 10);
+    try {
+      const book = await getBook(bookId);
+      if (!book) {
+        json(res, { error: "Book not found" }, 404);
+        return;
+      }
+
+      let coverDataUrl = "";
+      if (book.has_cover) {
+        const coverBuf = await getBookCover(bookId);
+        if (coverBuf) {
+          coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
+        }
+      }
+
+      html(res, viewBookHtml(book, coverDataUrl));
+    } catch (e: any) {
+      json(res, { error: e.message }, 500);
+    }
+    return;
+  }
+
+  // --- Download Endpoint (signed URL) ---
   if (path.startsWith("/download/")) {
     const expires = url.searchParams.get("expires") ?? "";
     const sig = url.searchParams.get("sig") ?? "";
@@ -311,6 +345,107 @@ const server = createServer(async (req, res) => {
 
   json(res, { error: "Not found" }, 404);
 });
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function viewBookHtml(book: any, coverDataUrl: string): string {
+  const authors = (book.authors as string[])?.join(", ") ?? "";
+  const tags = (book.tags as string[]) ?? [];
+  const formats = (book.formats as string[]) ?? [];
+  const languages = (book.languages as string[]) ?? [];
+
+  let seriesLine = "";
+  if (book.series) {
+    const idx = book.series_index != null ? ` #${book.series_index}` : "";
+    seriesLine = `<div class="meta-row"><span class="label">Series</span><span>${escapeHtml(book.series)}${escapeHtml(idx)}</span></div>`;
+  }
+
+  let publisherLine = "";
+  if (book.publisher) {
+    publisherLine = `<div class="meta-row"><span class="label">Publisher</span><span>${escapeHtml(book.publisher)}</span></div>`;
+  }
+
+  let ratingLine = "";
+  if (book.rating != null && book.rating > 0) {
+    const stars = "\u2605".repeat(Math.round(book.rating / 2)) + "\u2606".repeat(5 - Math.round(book.rating / 2));
+    ratingLine = `<div class="meta-row"><span class="label">Rating</span><span>${stars}</span></div>`;
+  }
+
+  const pubdate = book.pubdate ? new Date(book.pubdate).getFullYear() : null;
+  let pubdateLine = "";
+  if (pubdate && pubdate > 100) {
+    pubdateLine = `<div class="meta-row"><span class="label">Published</span><span>${pubdate}</span></div>`;
+  }
+
+  const coverImg = coverDataUrl
+    ? `<img class="cover" src="${coverDataUrl}" alt="Cover">`
+    : `<div class="cover no-cover">No Cover</div>`;
+
+  const description = book.comments ?? "";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <title>${escapeHtml(book.title)} - Lyceum</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="/public/favicon.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #1a1a1a; min-height: 100vh; }
+    .header { background: #162238; padding: 16px 24px; }
+    .header a { color: #fff; text-decoration: none; font-size: 1.1em; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; }
+    .header img { height: 28px; }
+    .container { max-width: 720px; margin: 32px auto; padding: 0 20px; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+    .book-layout { display: flex; gap: 28px; padding: 28px; }
+    .cover { width: 180px; min-width: 180px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); object-fit: contain; align-self: flex-start; }
+    .no-cover { height: 260px; display: flex; align-items: center; justify-content: center; background: #e5e7eb; color: #9ca3af; font-size: 0.9em; }
+    .details { flex: 1; min-width: 0; }
+    .title { font-size: 1.5em; font-weight: 700; line-height: 1.3; margin-bottom: 4px; }
+    .authors { font-size: 1.1em; color: #4b5563; margin-bottom: 20px; }
+    .meta-row { display: flex; padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.92em; }
+    .meta-row:last-child { border-bottom: none; }
+    .label { color: #6b7280; width: 90px; min-width: 90px; font-weight: 500; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag { background: #f0f4ff; color: #2563eb; border-radius: 3px; padding: 2px 8px; font-size: 0.85em; }
+    .format { background: #f0fdf4; color: #16a34a; border-radius: 3px; padding: 2px 8px; font-size: 0.85em; font-weight: 500; }
+    .description { padding: 24px 28px; border-top: 1px solid #e5e7eb; font-size: 0.95em; line-height: 1.6; color: #374151; }
+    .description h3 { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 12px; }
+    .description :is(p, ul, ol) { margin-bottom: 12px; }
+    @media (max-width: 560px) {
+      .book-layout { flex-direction: column; align-items: center; text-align: center; padding: 20px; }
+      .cover { width: 160px; min-width: 160px; }
+      .meta-row { justify-content: center; }
+      .tags { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header"><a href="/"><img src="/public/logo.webp" alt="">Lyceum</a></div>
+  <div class="container">
+    <div class="card">
+      <div class="book-layout">
+        ${coverImg}
+        <div class="details">
+          <div class="title">${escapeHtml(book.title)}</div>
+          <div class="authors">${escapeHtml(authors)}</div>
+          ${seriesLine}
+          ${publisherLine}
+          ${pubdateLine}
+          ${ratingLine}
+          ${languages.length ? `<div class="meta-row"><span class="label">Language</span><span>${languages.map((l: string) => escapeHtml(l)).join(", ")}</span></div>` : ""}
+          ${tags.length ? `<div class="meta-row"><span class="label">Tags</span><div class="tags">${tags.map((t: string) => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div></div>` : ""}
+          ${formats.length ? `<div class="meta-row"><span class="label">Formats</span><div class="tags">${formats.map((f: string) => `<span class="format">${escapeHtml(f)}</span>`).join("")}</div></div>` : ""}
+        </div>
+      </div>
+      ${description ? `<div class="description"><h3>Description</h3>${description}</div>` : ""}
+    </div>
+  </div>
+</body>
+</html>`;
+}
 
 server.listen(PORT, () => {
   log.info({ url: BASE_URL }, "Lyceum listening");

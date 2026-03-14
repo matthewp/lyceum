@@ -127,6 +127,18 @@ export function createMcpServer(): McpServer {
     };
   });
 
+  server.registerTool("get_view_link", {
+    description: "Get a temporary link to view a book's details page showing its cover and metadata. Returns a signed URL that expires in 10 minutes.",
+    inputSchema: {
+      id: z.number().describe("The book ID"),
+    },
+  }, async ({ id }) => {
+    const url = createSignedUrl(BASE_URL, `/view/${id}`, 600);
+    return {
+      content: [{ type: "text", text: url }],
+    };
+  });
+
   server.registerTool("set_metadata", {
     description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
     inputSchema: {
