@@ -93,6 +93,7 @@ Secret=lyceum_auth_password,type=env,target=AUTH_PASSWORD
 | `list_authors` | List all authors with book counts |
 | `list_tags` | List all tags with book counts |
 | `list_series` | List all series with book counts |
+| `get_view_link` | Get a signed URL to view a book's details page with cover and metadata (expires in 10 minutes) |
 | `get_download_link` | Get a signed download URL for a book file (expires in 5 minutes) |
 | `get_upload_link` | Get a signed URL to upload a book via browser (expires in 10 minutes) |
 | `set_metadata` | Update metadata fields on a book (title, authors, tags, custom columns, etc.) |
