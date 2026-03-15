@@ -100,6 +100,7 @@ Secret=lyceum_auth_password,type=env,target=AUTH_PASSWORD
 | `set_cover` | Set a book's cover image from a URL |
 | `fetch_metadata` | Search Google Books for metadata by title, author, or ISBN |
 | `remove_book` | Permanently remove one or more books from the library |
+| `remove_format` | Remove specific file formats from a book (e.g. remove MOBI but keep EPUB) |
 | `convert_book` | Convert a book to a different format (e.g. EPUB to PDF) |
 | `add_device` | Start adding an e-reader device (sends a verification code) |
 | `verify_device` | Complete device setup with the verification code |
