@@ -10,32 +10,44 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (ch) => ESC[ch]);
 }
 
-interface UnsafeHTML {
-  dangerouslySetInnerHTML: string;
+export class SafeHTML {
+  #html: string;
+  constructor(value: string) {
+    this.#html = value;
+  }
+  toString(): string {
+    return this.#html;
+  }
+}
+
+export class UnsafeHTML {
+  #html: string;
+  constructor(value: string) {
+    this.#html = value;
+  }
+  toString(): string {
+    return this.#html;
+  }
 }
 
 export function unsafeHTML(s: string): UnsafeHTML {
-  return { dangerouslySetInnerHTML: s };
+  return new UnsafeHTML(s);
 }
 
-function isUnsafeHTML(value: unknown): value is UnsafeHTML {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "dangerouslySetInnerHTML" in (value as Record<string, unknown>)
-  );
-}
-
-export function html(strings: TemplateStringsArray, ...values: unknown[]): string {
+export function html(strings: TemplateStringsArray, ...values: unknown[]): SafeHTML {
   let result = strings[0];
   for (let i = 0; i < values.length; i++) {
     const val = values[i];
-    if (isUnsafeHTML(val)) {
-      result += val.dangerouslySetInnerHTML;
+    if (val instanceof SafeHTML || val instanceof UnsafeHTML) {
+      result += val.toString();
     } else {
       result += escapeHtml(String(val));
     }
     result += strings[i + 1];
   }
-  return result;
+  return new SafeHTML(result);
+}
+
+export function renderToString(safe: SafeHTML): string {
+  return safe.toString();
 }

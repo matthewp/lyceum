@@ -14,6 +14,7 @@ import {
   verifySignedUrl,
   checkPassword,
 } from "./auth.ts";
+import { renderToString, SafeHTML } from "./html.ts";
 import { landingPage, authorizePage, uploadPage, viewBookPage } from "./templates.ts";
 import { parseMultipart } from "./multipart.ts";
 import { addBook, downloadBook, getBook, getBookCover } from "./calibre.ts";
@@ -26,9 +27,9 @@ function json(res: import("node:http").ServerResponse, data: unknown, status = 2
   res.end(JSON.stringify(data));
 }
 
-function html(res: import("node:http").ServerResponse, body: string, status = 200) {
+function sendHtml(res: import("node:http").ServerResponse, body: SafeHTML, status = 200) {
   res.writeHead(status, { "Content-Type": "text/html" });
-  res.end(body);
+  res.end(renderToString(body));
 }
 
 function readBody(req: import("node:http").IncomingMessage): Promise<string> {
@@ -55,7 +56,7 @@ const server = createServer(async (req, res) => {
 
   // --- Landing Page ---
   if (req.method === "GET" && path === "/") {
-    html(res, landingPage(BASE_URL));
+    sendHtml(res, landingPage(BASE_URL));
     return;
   }
 
@@ -136,7 +137,7 @@ const server = createServer(async (req, res) => {
       const redirectUri = url.searchParams.get("redirect_uri") ?? "";
       const state = url.searchParams.get("state") ?? "";
 
-      html(res, authorizePage({ clientId, redirectUri, state }));
+      sendHtml(res, authorizePage({ clientId, redirectUri, state }));
       return;
     }
 
@@ -148,7 +149,7 @@ const server = createServer(async (req, res) => {
       const state = body.get("state") ?? "";
 
       if (!checkPassword(password)) {
-        html(res, authorizePage({ clientId, redirectUri, state, error: "Wrong password." }), 401);
+        sendHtml(res, authorizePage({ clientId, redirectUri, state, error: "Wrong password." }), 401);
         return;
       }
 
@@ -249,7 +250,7 @@ const server = createServer(async (req, res) => {
         coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
       }
 
-      html(res, viewBookPage(book, coverDataUrl));
+      sendHtml(res, viewBookPage(book, coverDataUrl));
     } catch (e: any) {
       json(res, { error: e.message }, 500);
     }
@@ -300,7 +301,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "GET") {
-      html(res, uploadPage());
+      sendHtml(res, uploadPage());
       return;
     }
 
@@ -310,15 +311,15 @@ const server = createServer(async (req, res) => {
       const file = parseMultipart(body, contentType);
 
       if (!file) {
-        html(res, uploadPage({ error: "No file received." }), 400);
+        sendHtml(res, uploadPage({ error: "No file received." }), 400);
         return;
       }
 
       try {
         const result = await addBook(file.filename, file.data);
-        html(res, uploadPage({ success: `Added "${result.title}" (ID: ${result.book_id})` }));
+        sendHtml(res, uploadPage({ success: `Added "${result.title}" (ID: ${result.book_id})` }));
       } catch (e: any) {
-        html(res, uploadPage({ error: `Upload failed: ${e.message}` }), 500);
+        sendHtml(res, uploadPage({ error: `Upload failed: ${e.message}` }), 500);
       }
       return;
     }

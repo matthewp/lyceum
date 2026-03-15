@@ -1,22 +1,31 @@
-import { html, unsafeHTML } from "./html.ts";
+import { html, unsafeHTML, SafeHTML } from "./html.ts";
 
-function layout(title: string, styles: string, body: string): string {
+const HEADER_STYLES = `
+    .header { background: #162238; padding: 16px 24px; }
+    .header a { color: #fff; text-decoration: none; font-size: 1.1em; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; }
+    .header img { height: 28px; }`;
+
+function header(): SafeHTML {
+  return html`<div class="header"><a href="/"><img src="/public/logo.webp" alt="">Lyceum</a></div>`;
+}
+
+function layout(title: SafeHTML | string, styles: string, body: SafeHTML): SafeHTML {
   return html`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>${unsafeHTML(title)}</title>
+  <title>${typeof title === "string" ? title : title}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" href="/public/favicon.png">
   <style>${unsafeHTML(styles)}</style>
 </head>
 <body>
-  ${unsafeHTML(body)}
+  ${body}
 </body>
 </html>`;
 }
 
-export function landingPage(baseUrl: string): string {
+export function landingPage(baseUrl: string): SafeHTML {
   const styles = `
     body { font-family: system-ui; max-width: 520px; margin: 80px auto; padding: 0 20px; color: #1a1a1a; }
     .logo { display: block; width: 120px; height: auto; margin-bottom: 16px; background: #162238; padding: 12px; border-radius: 8px; }
@@ -61,44 +70,46 @@ export function landingPage(baseUrl: string): string {
 }
 
 const FORM_STYLES = `
-    body { font-family: system-ui; max-width: 400px; margin: 80px auto; padding: 0 20px; }
+    ${HEADER_STYLES}
+    body { font-family: system-ui; max-width: 400px; margin: 0 auto; padding: 0 20px; }
+    .content { margin-top: 40px; }
     h1 { font-size: 1.4em; }
     input, button { display: block; width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; font-size: 1em; }
     button { background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
     button:hover { background: #1d4ed8; }
     .success { color: #16a34a; }
-    .error { color: #dc2626; }
-    @media (max-width: 560px) {
-      body { margin-top: 40px; }
-    }`;
+    .error { color: #dc2626; }`;
 
 export function authorizePage(opts: {
   clientId: string;
   redirectUri: string;
   state: string;
   error?: string;
-}): string {
-  const errorHtml = opts.error
+}): SafeHTML {
+  const errorMsg = opts.error
     ? html`<p class="error">${opts.error}</p>`
-    : "";
+    : html``;
 
   const body = html`
-  <h1>Lyceum</h1>
-  <p>An application is requesting access to your Calibre library.</p>
-  <form method="POST">
-    <input type="hidden" name="client_id" value="${opts.clientId}">
-    <input type="hidden" name="redirect_uri" value="${opts.redirectUri}">
-    <input type="hidden" name="state" value="${opts.state}">
-    <input type="password" name="password" placeholder="Password" required autofocus>
-    <button type="submit">Authorize</button>
-    ${unsafeHTML(errorHtml)}
-  </form>`;
+  ${header()}
+  <div class="content">
+    <h1>Authorize</h1>
+    <p>An application is requesting access to your Calibre library.</p>
+    <form method="POST">
+      <input type="hidden" name="client_id" value="${opts.clientId}">
+      <input type="hidden" name="redirect_uri" value="${opts.redirectUri}">
+      <input type="hidden" name="state" value="${opts.state}">
+      <input type="password" name="password" placeholder="Password" required autofocus>
+      <button type="submit">Authorize</button>
+      ${errorMsg}
+    </form>
+  </div>`;
 
   return layout("Lyceum - Authorize", FORM_STYLES, body);
 }
 
-export function uploadPage(opts?: { success?: string; error?: string }): string {
-  let message = "";
+export function uploadPage(opts?: { success?: string; error?: string }): SafeHTML {
+  let message = html``;
   if (opts?.success) {
     message = html`<p class="success">${opts.success}</p>`;
   } else if (opts?.error) {
@@ -106,42 +117,45 @@ export function uploadPage(opts?: { success?: string; error?: string }): string 
   }
 
   const body = html`
-  <h1>Lyceum</h1>
-  <p>Upload a book to your Calibre library.</p>
-  <form method="POST" enctype="multipart/form-data">
-    <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
-    <button type="submit">Upload</button>
-    ${unsafeHTML(message)}
-  </form>`;
+  ${header()}
+  <div class="content">
+    <h1>Upload</h1>
+    <p>Upload a book to your Calibre library.</p>
+    <form method="POST" enctype="multipart/form-data">
+      <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
+      <button type="submit">Upload</button>
+      ${message}
+    </form>
+  </div>`;
 
   return layout("Lyceum - Upload Book", FORM_STYLES, body);
 }
 
-export function viewBookPage(book: any, coverDataUrl: string): string {
+export function viewBookPage(book: any, coverDataUrl: string): SafeHTML {
   const authors = (book.authors as string[])?.join(", ") ?? "";
   const tags = (book.tags as string[]) ?? [];
   const formats = (book.formats as string[]) ?? [];
   const languages = (book.languages as string[]) ?? [];
 
-  let seriesLine = "";
+  let seriesLine = html``;
   if (book.series) {
     const idx = book.series_index != null ? ` #${book.series_index}` : "";
     seriesLine = html`<div class="meta-row"><span class="label">Series</span><span>${book.series}${idx}</span></div>`;
   }
 
-  let publisherLine = "";
+  let publisherLine = html``;
   if (book.publisher) {
     publisherLine = html`<div class="meta-row"><span class="label">Publisher</span><span>${book.publisher}</span></div>`;
   }
 
-  let ratingLine = "";
+  let ratingLine = html``;
   if (book.rating != null && book.rating > 0) {
     const stars = "\u2605".repeat(Math.round(book.rating / 2)) + "\u2606".repeat(5 - Math.round(book.rating / 2));
-    ratingLine = html`<div class="meta-row"><span class="label">Rating</span><span>${unsafeHTML(stars)}</span></div>`;
+    ratingLine = html`<div class="meta-row"><span class="label">Rating</span><span>${stars}</span></div>`;
   }
 
   const pubdate = book.pubdate ? new Date(book.pubdate).getFullYear() : null;
-  let pubdateLine = "";
+  let pubdateLine = html``;
   if (pubdate && pubdate > 100) {
     pubdateLine = html`<div class="meta-row"><span class="label">Published</span><span>${pubdate}</span></div>`;
   }
@@ -154,26 +168,24 @@ export function viewBookPage(book: any, coverDataUrl: string): string {
 
   const languagesLine = languages.length
     ? html`<div class="meta-row"><span class="label">Language</span><span>${languages.join(", ")}</span></div>`
-    : "";
+    : html``;
 
   const tagsLine = tags.length
     ? html`<div class="meta-row"><span class="label">Tags</span><div class="tags">${unsafeHTML(tags.map((t: string) => html`<span class="tag">${t}</span>`).join(""))}</div></div>`
-    : "";
+    : html``;
 
   const formatsLine = formats.length
     ? html`<div class="meta-row"><span class="label">Formats</span><div class="tags">${unsafeHTML(formats.map((f: string) => html`<span class="format">${f}</span>`).join(""))}</div></div>`
-    : "";
+    : html``;
 
   const descriptionBlock = description
     ? html`<div class="description"><h3>Description</h3>${unsafeHTML(description)}</div>`
-    : "";
+    : html``;
 
   const styles = `
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #1a1a1a; min-height: 100vh; }
-    .header { background: #162238; padding: 16px 24px; }
-    .header a { color: #fff; text-decoration: none; font-size: 1.1em; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; }
-    .header img { height: 28px; }
+    ${HEADER_STYLES}
     .container { max-width: 720px; margin: 32px auto; padding: 0 20px; }
     .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
     .book-layout { display: flex; gap: 28px; padding: 28px; }
@@ -193,30 +205,30 @@ export function viewBookPage(book: any, coverDataUrl: string): string {
     .description :is(p, ul, ol) { margin-bottom: 12px; }
     @media (max-width: 560px) {
       .book-layout { flex-direction: column; align-items: center; text-align: center; padding: 20px; }
-      .cover { width: 160px; min-width: 160px; }
+      .cover { width: 160px; min-width: 160px; align-self: center; }
       .meta-row { justify-content: center; }
       .tags { justify-content: center; }
     }`;
 
   const body = html`
-  <div class="header"><a href="/"><img src="/public/logo.webp" alt="">Lyceum</a></div>
+  ${header()}
   <div class="container">
     <div class="card">
       <div class="book-layout">
-        ${unsafeHTML(coverImg)}
+        ${coverImg}
         <div class="details">
           <div class="title">${book.title}</div>
           <div class="authors">${authors}</div>
-          ${unsafeHTML(seriesLine)}
-          ${unsafeHTML(publisherLine)}
-          ${unsafeHTML(pubdateLine)}
-          ${unsafeHTML(ratingLine)}
-          ${unsafeHTML(languagesLine)}
-          ${unsafeHTML(tagsLine)}
-          ${unsafeHTML(formatsLine)}
+          ${seriesLine}
+          ${publisherLine}
+          ${pubdateLine}
+          ${ratingLine}
+          ${languagesLine}
+          ${tagsLine}
+          ${formatsLine}
         </div>
       </div>
-      ${unsafeHTML(descriptionBlock)}
+      ${descriptionBlock}
     </div>
   </div>`;
 
