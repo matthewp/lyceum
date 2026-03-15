@@ -25,6 +25,25 @@ function layout(title: SafeHTML | string, styles: string, body: SafeHTML): SafeH
 </html>`;
 }
 
+const APP_STYLES = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #1a1a1a; min-height: 100vh; }
+    ${HEADER_STYLES}
+    .container { max-width: 720px; margin: 32px auto; padding: 0 20px; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; padding: 28px; }`;
+
+function appLayout(title: SafeHTML | string, extraStyles: string, card: SafeHTML): SafeHTML {
+  const styles = APP_STYLES + extraStyles;
+  const body = html`
+  ${header()}
+  <div class="container">
+    <div class="card">
+      ${card}
+    </div>
+  </div>`;
+  return layout(title, styles, body);
+}
+
 export function landingPage(baseUrl: string): SafeHTML {
   const styles = `
     body { font-family: system-ui; max-width: 520px; margin: 80px auto; padding: 0 20px; color: #1a1a1a; }
@@ -70,10 +89,8 @@ export function landingPage(baseUrl: string): SafeHTML {
 }
 
 const FORM_STYLES = `
-    ${HEADER_STYLES}
-    body { font-family: system-ui; max-width: 400px; margin: 0 auto; padding: 0 20px; }
-    .content { margin-top: 40px; }
-    h1 { font-size: 1.4em; }
+    h1 { font-size: 1.4em; margin-bottom: 8px; }
+    p { margin-bottom: 16px; }
     input, button { display: block; width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; font-size: 1em; }
     button { background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
     button:hover { background: #1d4ed8; }
@@ -90,9 +107,7 @@ export function authorizePage(opts: {
     ? html`<p class="error">${opts.error}</p>`
     : html``;
 
-  const body = html`
-  ${header()}
-  <div class="content">
+  const card = html`
     <h1>Authorize</h1>
     <p>An application is requesting access to your Calibre library.</p>
     <form method="POST">
@@ -102,10 +117,9 @@ export function authorizePage(opts: {
       <input type="password" name="password" placeholder="Password" required autofocus>
       <button type="submit">Authorize</button>
       ${errorMsg}
-    </form>
-  </div>`;
+    </form>`;
 
-  return layout("Lyceum - Authorize", FORM_STYLES, body);
+  return appLayout("Lyceum - Authorize", FORM_STYLES, card);
 }
 
 export function uploadPage(opts?: { success?: string; error?: string }): SafeHTML {
@@ -116,19 +130,16 @@ export function uploadPage(opts?: { success?: string; error?: string }): SafeHTM
     message = html`<p class="error">${opts.error}</p>`;
   }
 
-  const body = html`
-  ${header()}
-  <div class="content">
+  const card = html`
     <h1>Upload</h1>
     <p>Upload a book to your Calibre library.</p>
     <form method="POST" enctype="multipart/form-data">
       <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
       <button type="submit">Upload</button>
       ${message}
-    </form>
-  </div>`;
+    </form>`;
 
-  return layout("Lyceum - Upload Book", FORM_STYLES, body);
+  return appLayout("Lyceum - Upload Book", FORM_STYLES, card);
 }
 
 export function viewBookPage(book: any, coverDataUrl: string): SafeHTML {
@@ -182,12 +193,8 @@ export function viewBookPage(book: any, coverDataUrl: string): SafeHTML {
     ? html`<div class="description"><h3>Description</h3>${unsafeHTML(description)}</div>`
     : html``;
 
-  const styles = `
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; color: #1a1a1a; min-height: 100vh; }
-    ${HEADER_STYLES}
-    .container { max-width: 720px; margin: 32px auto; padding: 0 20px; }
-    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+  const extraStyles = `
+    .card { padding: 0; }
     .book-layout { display: flex; gap: 28px; padding: 28px; }
     .cover { width: 180px; min-width: 180px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); object-fit: contain; align-self: flex-start; }
     .no-cover { height: 260px; display: flex; align-items: center; justify-content: center; background: #e5e7eb; color: #9ca3af; font-size: 0.9em; }
@@ -210,10 +217,7 @@ export function viewBookPage(book: any, coverDataUrl: string): SafeHTML {
       .tags { justify-content: center; }
     }`;
 
-  const body = html`
-  ${header()}
-  <div class="container">
-    <div class="card">
+  const card = html`
       <div class="book-layout">
         ${coverImg}
         <div class="details">
@@ -228,9 +232,7 @@ export function viewBookPage(book: any, coverDataUrl: string): SafeHTML {
           ${formatsLine}
         </div>
       </div>
-      ${descriptionBlock}
-    </div>
-  </div>`;
+      ${descriptionBlock}`;
 
-  return layout(html`${book.title} - Lyceum`, styles, body);
+  return appLayout(html`${book.title} - Lyceum`, extraStyles, card);
 }
