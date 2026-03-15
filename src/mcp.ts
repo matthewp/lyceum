@@ -10,6 +10,7 @@ import {
   setMetadata,
   setCover,
   deleteBooks,
+  removeFormats,
   convertBook,
   downloadBook,
   bookDownloadPath,
@@ -192,6 +193,26 @@ export function createMcpServer(): McpServer {
       const label = ids.length === 1 ? `Book ${ids[0]} removed.` : `${ids.length} books removed.`;
       return {
         content: [{ type: "text", text: label }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("remove_format", {
+    description: "Remove one or more file formats from a book (e.g. remove the MOBI copy but keep EPUB).",
+    inputSchema: {
+      id: z.number().describe("The book ID"),
+      formats: z.array(z.string()).describe("Formats to remove (e.g. [\"EPUB\", \"MOBI\"])"),
+    },
+  }, async ({ id, formats }) => {
+    try {
+      await removeFormats(id, formats);
+      return {
+        content: [{ type: "text", text: `Removed ${formats.join(", ")} from book ${id}.` }],
       };
     } catch (e: any) {
       return {

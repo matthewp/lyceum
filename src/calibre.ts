@@ -250,6 +250,14 @@ export async function setMetadata(
   });
 }
 
+export async function removeFormats(bookId: number, formats: string[]): Promise<void> {
+  const path = libraryPath(`/cdb/set-fields/${bookId}`);
+  await post(path, {
+    changes: { removed_formats: formats.map(f => f.toUpperCase()) },
+    loaded_book_ids: [bookId],
+  });
+}
+
 export async function setCover(bookId: number, imageUrl: string): Promise<void> {
   const imgRes = await fetch(imageUrl);
   if (!imgRes.ok) throw new Error(`Failed to download cover image: ${imgRes.status}`);
