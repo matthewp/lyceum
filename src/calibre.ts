@@ -1,5 +1,7 @@
 import { randomUUID, createHash, randomBytes } from "node:crypto";
+import { logger as root } from "./logger.ts";
 
+const log = root.child({ module: "calibre" });
 const CALIBRE_SERVER = process.env.CALIBRE_SERVER_URL ?? "http://localhost:8080";
 const LIBRARY_ID = process.env.CALIBRE_LIBRARY_ID ?? "";
 const CALIBRE_USERNAME = process.env.CALIBRE_USERNAME ?? "";
@@ -86,16 +88,21 @@ function libraryPath(path: string): string {
 
 async function get(path: string): Promise<any> {
   const url = `${CALIBRE_SERVER}${path}`;
+  log.debug({ method: "GET", url }, "request");
   const res = await digestFetch(url);
   if (!res.ok) {
     const body = await res.text();
+    log.error({ method: "GET", url, status: res.status, body }, "request failed");
     throw new Error(`Calibre server error (${res.status}): ${body}`);
   }
-  return res.json();
+  const json = await res.json();
+  log.debug({ method: "GET", url, status: res.status }, "response");
+  return json;
 }
 
 async function post(path: string, body: unknown): Promise<any> {
   const url = `${CALIBRE_SERVER}${path}`;
+  log.debug({ method: "POST", url, body }, "request");
   const res = await digestFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -103,7 +110,11 @@ async function post(path: string, body: unknown): Promise<any> {
   });
 
   const text = await res.text();
-  if (!res.ok) throw new Error(`Calibre server error (${res.status}): ${text}`);
+  if (!res.ok) {
+    log.error({ method: "POST", url, status: res.status, body: text }, "request failed");
+    throw new Error(`Calibre server error (${res.status}): ${text}`);
+  }
+  log.debug({ method: "POST", url, status: res.status, response: text }, "response");
 
   try {
     const json = JSON.parse(text);
@@ -268,18 +279,18 @@ export async function startConversion(
   inputFmt: string,
   outputFmt: string
 ): Promise<number> {
-  const result = await post(`/conversion/start/${bookId}`, {
+  const result = await post(libraryPath(`/conversion/start/${bookId}`), {
     input_fmt: inputFmt.toLowerCase(),
     output_fmt: outputFmt.toLowerCase(),
     options: {},
   });
-  return result.job_id;
+  return typeof result === "number" ? result : result.job_id;
 }
 
 export async function conversionStatus(
   jobId: number
 ): Promise<{ running: boolean; ok?: boolean; percent?: number; msg?: string; fmt?: string }> {
-  return get(`/conversion/status/${jobId}`);
+  return get(libraryPath(`/conversion/status/${jobId}`));
 }
 
 export async function convertBook(
