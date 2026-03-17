@@ -1,12 +1,24 @@
 export type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult } from "./types.ts";
+export type { FileStore } from "./filestore.ts";
 export { CalibreBackend } from "./calibre.ts";
+export { LocalBackend } from "./local.ts";
+export { DiskFileStore } from "./filestore.ts";
 
 import type { StorageBackend } from "./types.ts";
 import { CalibreBackend } from "./calibre.ts";
+import { LocalBackend } from "./local.ts";
+import { DiskFileStore } from "./filestore.ts";
+import { join } from "node:path";
 
 export type StorageMode = "calibre" | "local";
 
-export function createStorage(mode: StorageMode): StorageBackend {
+export interface StorageOptions {
+  dataDir?: string;
+}
+
+export function createStorage(mode: StorageMode, opts: StorageOptions = {}): StorageBackend {
+  const dataDir = opts.dataDir ?? process.env.DATA_DIR ?? "/data";
+
   switch (mode) {
     case "calibre":
       return new CalibreBackend({
@@ -16,7 +28,10 @@ export function createStorage(mode: StorageMode): StorageBackend {
         password: process.env.CALIBRE_PASSWORD ?? "",
       });
     case "local":
-      throw new Error("Local storage backend is not yet implemented");
+      return new LocalBackend({
+        dbPath: join(dataDir, "library.db"),
+        fileStore: new DiskFileStore(dataDir),
+      });
     default:
       throw new Error(`Unknown storage mode: ${mode}`);
   }

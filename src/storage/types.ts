@@ -29,6 +29,7 @@ export interface BookDetail {
   comments: string | null;
   has_cover: boolean;
   cover: string | null;
+  read_at: string | null;
   custom_columns: Record<string, { name: string; datatype: string; value: unknown }>;
 }
 
