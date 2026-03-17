@@ -54,8 +54,8 @@ export async function importFromCalibre(config: ImportConfig) {
         // Book row — insert with a placeholder path, then update with the real one
         const author = detail.authors[0] ?? "Unknown";
         const result = db.prepare(`
-          INSERT INTO books (title, author_sort, publisher, pubdate, rating, comments, series_id, series_index, has_cover, path, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)
+          INSERT INTO books (title, author_sort, publisher, pubdate, rating, comments, series_id, series_index, has_cover, path, read_at, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?)
         `).run(
           detail.title,
           detail.author_sort || null,
@@ -66,6 +66,7 @@ export async function importFromCalibre(config: ImportConfig) {
           seriesId,
           detail.series_index,
           detail.has_cover ? 1 : 0,
+          detail.read_at || null,
           detail.timestamp || new Date().toISOString(),
           detail.last_modified || new Date().toISOString(),
         );
