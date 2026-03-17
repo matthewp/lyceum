@@ -19,8 +19,13 @@ import { landingPage, authorizePage, uploadPage, viewBookPage } from "./template
 import { parseMultipart } from "./multipart.ts";
 import { addBook, downloadBook, getBook, getBookCover } from "./calibre.ts";
 
-const PORT = parseInt(process.env.PORT ?? "3000", 10);
-const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
+export interface ServerConfig {
+  port: number;
+  baseUrl: string;
+}
+
+let PORT: number;
+let BASE_URL: string;
 
 function json(res: import("node:http").ServerResponse, data: unknown, status = 200) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -50,7 +55,11 @@ function readBodyRaw(req: import("node:http").IncomingMessage): Promise<Buffer> 
   });
 }
 
-const server = createServer(async (req, res) => {
+export function startServer(config: ServerConfig) {
+  PORT = config.port;
+  BASE_URL = config.baseUrl;
+
+  const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", BASE_URL);
   const path = url.pathname;
 
@@ -328,7 +337,9 @@ const server = createServer(async (req, res) => {
   json(res, { error: "Not found" }, 404);
 });
 
+  server.listen(PORT, () => {
+    log.info({ url: BASE_URL }, "Lyceum listening");
+  });
 
-server.listen(PORT, () => {
-  log.info({ url: BASE_URL }, "Lyceum listening");
-});
+  return server;
+}

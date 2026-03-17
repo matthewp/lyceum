@@ -2,9 +2,12 @@
   "name": "lyceum",
   "version": "1.0.0",
   "type": "module",
+  "bin": {
+    "lyceum": "bin/lyceum.js"
+  },
   "scripts": {
-    "dev": "node --watch src/server.ts",
-    "start": "node src/server.ts"
+    "dev": "node --watch src/cli.ts serve",
+    "start": "node src/cli.ts serve"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
