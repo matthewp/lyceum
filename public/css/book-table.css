@@ -66,6 +66,27 @@ td.tags .tag:hover { background: #dbe6ff; }
   vertical-align: middle;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 28px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.9em;
+}
+.page-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+.page-link:hover { text-decoration: underline; }
+.page-link.disabled {
+  color: #d1d5db;
+  pointer-events: none;
+}
+.page-info { color: #6b7280; }
+
 @media (max-width: 640px) {
   th.tags, td.tags, th.formats, td.formats { display: none; }
 }

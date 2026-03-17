@@ -9,7 +9,11 @@ function cssLinks(paths: string[]): UnsafeHTML {
   return unsafeHTML(paths.map(p => `<link rel="stylesheet" href="${p}">`).join("\n  "));
 }
 
-function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML): SafeHTML {
+function scriptTags(urls: string[]): UnsafeHTML {
+  return unsafeHTML(urls.map(u => `<script src="${u}" defer></script>`).join("\n  "));
+}
+
+function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML, scripts: string[] = []): SafeHTML {
   return html`<!DOCTYPE html>
 <html>
 <head>
@@ -18,12 +22,15 @@ function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML)
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" href="/public/favicon.png">
   ${cssLinks(stylesheets)}
+  ${scriptTags(scripts)}
 </head>
 <body>
   ${body}
 </body>
 </html>`;
 }
+
+const APP_SCRIPTS = ["https://unpkg.com/quicklink"];
 
 function appLayout(title: SafeHTML | string, pageStyles: string[], card: SafeHTML): SafeHTML {
   const stylesheets = ["/public/css/base.css", "/public/css/layout.css", ...pageStyles];
@@ -33,8 +40,10 @@ function appLayout(title: SafeHTML | string, pageStyles: string[], card: SafeHTM
     <div class="card">
       ${card}
     </div>
-  </div>`;
-  return layout(title, stylesheets, body);
+  </div>
+
+  <script>addEventListener("load",()=>quicklink.listen())</script>`;
+  return layout(title, stylesheets, body, APP_SCRIPTS);
 }
 
 export function landingPage(baseUrl: string): SafeHTML {
@@ -231,18 +240,36 @@ function bookTable(books: BookSummary[]): SafeHTML {
   </table>`;
 }
 
-export function appBooksPage(books: BookSummary[], total: number): SafeHTML {
+function pagination(page: number, perPage: number, total: number, basePath: string): SafeHTML {
+  const totalPages = Math.ceil(total / perPage);
+  if (totalPages <= 1) return html``;
+
+  const prev = page > 1
+    ? html`<a class="page-link" href="${basePath}?page=${page - 1}">&larr; Previous</a>`
+    : html`<span class="page-link disabled">&larr; Previous</span>`;
+
+  const next = page < totalPages
+    ? html`<a class="page-link" href="${basePath}?page=${page + 1}">Next &rarr;</a>`
+    : html`<span class="page-link disabled">Next &rarr;</span>`;
+
+  return html`<div class="pagination">${prev}<span class="page-info">Page ${page} of ${totalPages}</span>${next}</div>`;
+}
+
+export function appBooksPage(books: BookSummary[], total: number, page: number, perPage: number, basePath: string): SafeHTML {
   const card = html`
     <h2 class="page-title">Library <span class="count">(${total})</span></h2>
-    ${bookTable(books)}`;
+    ${bookTable(books)}
+    ${pagination(page, perPage, total, basePath)}`;
 
   return appLayout("Lyceum - Library", ["/public/css/book-table.css"], card);
 }
 
-export function appTagPage(tag: string, books: BookSummary[], total: number): SafeHTML {
+export function appTagPage(tag: string, books: BookSummary[], total: number, page: number, perPage: number): SafeHTML {
+  const basePath = `/app/tag/${encodeURIComponent(tag)}`;
   const card = html`
     <h2 class="page-title">${tag} <span class="count">(${total})</span></h2>
-    ${bookTable(books)}`;
+    ${bookTable(books)}
+    ${pagination(page, perPage, total, basePath)}`;
 
   return appLayout(html`${tag} - Lyceum`, ["/public/css/book-table.css"], card);
 }

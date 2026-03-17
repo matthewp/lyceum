@@ -95,6 +95,7 @@ export function startServer(config: ServerConfig) {
       ".ico": "image/x-icon",
       ".svg": "image/svg+xml",
       ".css": "text/css",
+      ".js": "text/javascript",
     };
     const fileName = path.slice("/public/".length);
     if (fileName.includes("..")) {
@@ -375,8 +376,10 @@ export function startServer(config: ServerConfig) {
 
     // Book list
     if (req.method === "GET" && path === "/app") {
-      const { books, total } = await storage.listBooks({ limit: 100 });
-      sendHtml(res, appBooksPage(books, total));
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      const perPage = 50;
+      const { books, total } = await storage.listBooks({ limit: perPage, offset: (page - 1) * perPage });
+      sendHtml(res, appBooksPage(books, total, page, perPage, "/app"));
       return;
     }
 
@@ -384,8 +387,10 @@ export function startServer(config: ServerConfig) {
     const tagMatch = path.match(/^\/app\/tag\/(.+)$/);
     if (req.method === "GET" && tagMatch) {
       const tag = decodeURIComponent(tagMatch[1]);
-      const { books, total } = await storage.listBooksByTag(tag, { limit: 100 });
-      sendHtml(res, appTagPage(tag, books, total));
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      const perPage = 50;
+      const { books, total } = await storage.listBooksByTag(tag, { limit: perPage, offset: (page - 1) * perPage });
+      sendHtml(res, appTagPage(tag, books, total, page, perPage));
       return;
     }
 
