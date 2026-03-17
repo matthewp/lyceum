@@ -13,23 +13,30 @@ export async function extractEpub(data: Buffer): Promise<BookMetadata> {
   writeFileSync(filePath, data);
 
   try {
-    const epub = await EPub.createAsync(filePath);
+    // Use event-based API so we can recover metadata even when
+    // epub2 fails on a bad TOC or other non-critical parse error.
+    const epub = await new Promise<InstanceType<typeof EPub>>((resolve) => {
+      const ep = new EPub(filePath);
+      ep.on("end", () => resolve(ep));
+      ep.on("error", () => resolve(ep)); // metadata is still available
+      ep.parse();
+    });
     const meta = epub.metadata;
 
     // Extract cover image
     let cover: Buffer | null = null;
-    const images = epub.listImage();
-    const coverImage = images.find(
-      (img: any) => img.id === "cover" || img.id === "cover-image"
-    ) ?? images[0];
+    try {
+      const images = epub.listImage();
+      const coverImage = images.find(
+        (img: any) => img.id === "cover" || img.id === "cover-image" || img.id === "bookcover"
+      ) ?? images.find((img: any) => /cover/i.test(img.href)) ?? images[0];
 
-    if (coverImage) {
-      try {
-        const [imageData] = await epub.getImageAsync(coverImage.id);
+      if (coverImage) {
+        const [imageData] = await epub.getImageAsync(coverImage.id as string);
         cover = Buffer.from(imageData);
-      } catch {
-        // cover extraction failed, not critical
       }
+    } catch {
+      // cover extraction failed, not critical
     }
 
     // Parse subjects (can be string or array)
@@ -38,7 +45,7 @@ export async function extractEpub(data: Buffer): Promise<BookMetadata> {
       if (Array.isArray(meta.subject)) {
         subjects.push(...meta.subject);
       } else {
-        subjects.push(...meta.subject.split(/[,;]\s*/));
+        subjects.push(...(meta.subject as string).split(/[,;]\s*/));
       }
     }
 

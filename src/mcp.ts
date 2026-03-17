@@ -169,7 +169,10 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("remove_book", {
     description: "Permanently remove one or more books from the Calibre library. This cannot be undone.",
     inputSchema: {
-      ids: z.array(z.coerce.number()).describe("Array of book IDs to remove"),
+      ids: z.preprocess(
+        (v) => typeof v === "string" ? JSON.parse(v) : v,
+        z.array(z.coerce.number())
+      ).describe("Array of book IDs to remove"),
     },
   }, async ({ ids }) => {
     try {
@@ -190,7 +193,10 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
     description: "Remove one or more file formats from a book (e.g. remove the MOBI copy but keep EPUB).",
     inputSchema: {
       id: z.coerce.number().describe("The book ID"),
-      formats: z.array(z.string()).describe("Formats to remove (e.g. [\"EPUB\", \"MOBI\"])"),
+      formats: z.preprocess(
+        (v) => typeof v === "string" ? JSON.parse(v) : v,
+        z.array(z.string())
+      ).describe("Formats to remove (e.g. [\"EPUB\", \"MOBI\"])"),
     },
   }, async ({ id, formats }) => {
     try {

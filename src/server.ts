@@ -270,6 +270,7 @@ export function startServer(config: ServerConfig) {
 
       sendHtml(res, viewBookPage(book, "mcp", coverDataUrl));
     } catch (e: any) {
+      log.error({ err: e, bookId }, "View book failed");
       json(res, { error: e.message }, 500);
     }
     return;
@@ -304,6 +305,7 @@ export function startServer(config: ServerConfig) {
       const body = new Uint8Array(await upstream.arrayBuffer());
       res.end(body);
     } catch (e: any) {
+      log.error({ err: e, path: downloadPath }, "Download failed");
       json(res, { error: e.message }, 500);
     }
     return;
@@ -337,6 +339,7 @@ export function startServer(config: ServerConfig) {
         const result = await storage.addBook(file.filename, file.data);
         sendHtml(res, uploadPage({ success: `Added "${result.title}" (ID: ${result.book_id})` }));
       } catch (e: any) {
+        log.error({ err: e, filename: file.filename }, "Upload failed");
         sendHtml(res, uploadPage({ error: `Upload failed: ${e.message}` }), 500);
       }
       return;

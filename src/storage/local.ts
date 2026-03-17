@@ -371,12 +371,11 @@ export class LocalBackend implements StorageBackend {
       const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(id) as { path: string } | undefined;
       if (!row) continue;
 
-      // Delete files
-      const formats = this.getFormats(id);
-      for (const fmt of formats) {
-        await this.files.delete(bookFilePath(row.path, fmt));
-      }
-      await this.files.delete(coverFilePath(row.path));
+      // Delete book directory and all its files
+      await this.files.deleteDir(row.path);
+      // Remove author directory if now empty
+      const authorDir = row.path.split("/").slice(0, 2).join("/");
+      await this.files.deleteDirIfEmpty(authorDir);
 
       // Delete DB records (cascade handles join tables)
       deleteFts(this.db, id);

@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, unlink, readdir, rename as fsRename, access } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, readdir, rename as fsRename, access, rm, rmdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 
 export interface FileStore {
@@ -8,6 +8,8 @@ export interface FileStore {
   exists(key: string): Promise<boolean>;
   list(prefix: string): Promise<string[]>;
   rename(oldKey: string, newKey: string): Promise<void>;
+  deleteDir(key: string): Promise<void>;
+  deleteDirIfEmpty(key: string): Promise<void>;
 }
 
 export class DiskFileStore implements FileStore {
@@ -65,5 +67,21 @@ export class DiskFileStore implements FileStore {
     const newPath = this.resolve(newKey);
     await mkdir(dirname(newPath), { recursive: true });
     await fsRename(oldPath, newPath);
+  }
+
+  async deleteDir(key: string): Promise<void> {
+    try {
+      await rm(this.resolve(key), { recursive: true });
+    } catch {
+      // ignore if already gone
+    }
+  }
+
+  async deleteDirIfEmpty(key: string): Promise<void> {
+    try {
+      await rmdir(this.resolve(key));
+    } catch {
+      // ignore if not empty or already gone
+    }
   }
 }
