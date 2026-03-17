@@ -10,6 +10,8 @@ const log = root.child({ module: "local" });
 export interface LocalConfig {
   dbPath: string;
   fileStore: FileStore;
+  converterUrl?: string;
+  converterApiKey?: string;
 }
 
 interface BookRow {
@@ -32,10 +34,14 @@ interface BookRow {
 export class LocalBackend implements StorageBackend {
   private db: Database.Database;
   private files: FileStore;
+  private converterUrl: string | null;
+  private converterApiKey: string | null;
 
   constructor(config: LocalConfig) {
     this.db = openDatabase(config.dbPath);
     this.files = config.fileStore;
+    this.converterUrl = config.converterUrl ?? null;
+    this.converterApiKey = config.converterApiKey ?? null;
     log.info({ db: config.dbPath }, "Local storage initialized");
   }
 
@@ -358,8 +364,50 @@ export class LocalBackend implements StorageBackend {
 
   // --- Conversion ---
 
-  async convertBook(_bookId: number, _inputFmt: string, _outputFmt: string): Promise<string> {
-    throw new Error("Conversion not yet implemented for local storage");
+  async convertBook(bookId: number, inputFmt: string, outputFmt: string): Promise<string> {
+    if (!this.converterUrl) {
+      throw new Error("No converter URL configured. Set CONVERTER_URL to enable format conversion.");
+    }
+
+    const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(bookId) as { path: string } | undefined;
+    if (!row) throw new Error(`Book ${bookId} not found`);
+
+    const inputExt = inputFmt.toLowerCase();
+    const outputExt = outputFmt.toLowerCase();
+    const sourceData = this.files.get(`${row.path}/book.${inputExt}`);
+    if (!sourceData) throw new Error(`Format ${inputFmt} not found for book ${bookId}`);
+
+    // POST to ebook-converter-api
+    const form = new FormData();
+    form.append("file", new Blob([new Uint8Array(sourceData)]), `book.${inputExt}`);
+    form.append("format", outputExt);
+
+    const headers: Record<string, string> = {};
+    if (this.converterApiKey) {
+      headers["Authorization"] = `Bearer ${this.converterApiKey}`;
+    }
+
+    const res = await fetch(`${this.converterUrl}/convert`, {
+      method: "POST",
+      headers,
+      body: form,
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Conversion failed (${res.status}): ${body}`);
+    }
+
+    const converted = Buffer.from(await res.arrayBuffer());
+
+    // Store the converted file
+    this.files.put(`${row.path}/book.${outputExt}`, converted);
+    this.db.prepare(
+      "INSERT OR REPLACE INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)"
+    ).run(bookId, outputFmt.toUpperCase(), `book.${outputExt}`, converted.length);
+
+    log.info({ bookId, from: inputFmt, to: outputFmt, size: converted.length }, "Conversion complete");
+    return `Conversion complete: ${outputFmt.toUpperCase()}`;
   }
 
   // --- File access ---

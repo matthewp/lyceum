@@ -31,6 +31,8 @@ export function createStorage(mode: StorageMode, opts: StorageOptions = {}): Sto
       return new LocalBackend({
         dbPath: join(dataDir, "library.db"),
         fileStore: new DiskFileStore(dataDir),
+        converterUrl: process.env.CONVERTER_URL,
+        converterApiKey: process.env.CONVERTER_API_KEY,
       });
     default:
       throw new Error(`Unknown storage mode: ${mode}`);
