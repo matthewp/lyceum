@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { startServer } from "./server.ts";
+import { createStorage, type StorageMode } from "./storage/index.ts";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -44,8 +45,9 @@ Options:
 if (command === "serve") {
   const port = parseInt(values.port as string, 10);
   const baseUrl = (values["base-url"] as string) ?? `http://localhost:${port}`;
+  const storage = createStorage(values.storage as StorageMode);
 
-  startServer({ port, baseUrl });
+  startServer({ port, baseUrl, storage });
 } else {
   console.error(`Unknown command: ${command}`);
   process.exit(1);

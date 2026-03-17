@@ -1,20 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import {
-  listBooks,
-  getBook,
-  searchBooks,
-  listAuthors,
-  listTags,
-  listSeries,
-  setMetadata,
-  setCover,
-  deleteBooks,
-  removeFormats,
-  convertBook,
-  downloadBook,
-  bookDownloadPath,
-} from "./calibre.ts";
+import type { StorageBackend } from "./storage/index.ts";
 import { createSignedUrl } from "./auth.ts";
 import { fetchMetadata } from "./metadata.ts";
 import {
@@ -25,14 +11,12 @@ import {
   sendToDevice,
 } from "./devices/index.ts";
 
-const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
-
-export function createMcpServer(): McpServer {
+export function createMcpServer(storage: StorageBackend, baseUrl: string): McpServer {
   const server = new McpServer({
     name: "lyceum",
     version: "1.0.0",
     icons: [{
-      src: `${BASE_URL}/public/favicon.png`,
+      src: `${baseUrl}/public/favicon.png`,
       mimeType: "image/png",
     }],
   });
@@ -44,7 +28,7 @@ export function createMcpServer(): McpServer {
       offset: z.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ limit, offset }) => {
-    const result = await listBooks({ limit: limit ?? 20, offset: offset ?? 0 });
+    const result = await storage.listBooks({ limit: limit ?? 20, offset: offset ?? 0 });
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -56,7 +40,7 @@ export function createMcpServer(): McpServer {
       id: z.number().describe("The book ID"),
     },
   }, async ({ id }) => {
-    const book = await getBook(id);
+    const book = await storage.getBook(id);
     if (!book) {
       return { content: [{ type: "text", text: "Book not found." }], isError: true };
     }
@@ -73,7 +57,7 @@ export function createMcpServer(): McpServer {
       offset: z.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ query, limit, offset }) => {
-    const result = await searchBooks(query, { limit: limit ?? 20, offset: offset ?? 0 });
+    const result = await storage.searchBooks(query, { limit: limit ?? 20, offset: offset ?? 0 });
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -82,7 +66,7 @@ export function createMcpServer(): McpServer {
   server.registerTool("list_authors", {
     description: "List all authors in the library with book counts.",
   }, async () => {
-    const authors = await listAuthors();
+    const authors = await storage.listAuthors();
     return {
       content: [{ type: "text", text: JSON.stringify(authors, null, 2) }],
     };
@@ -91,7 +75,7 @@ export function createMcpServer(): McpServer {
   server.registerTool("list_tags", {
     description: "List all tags in the library with book counts.",
   }, async () => {
-    const tags = await listTags();
+    const tags = await storage.listTags();
     return {
       content: [{ type: "text", text: JSON.stringify(tags, null, 2) }],
     };
@@ -100,7 +84,7 @@ export function createMcpServer(): McpServer {
   server.registerTool("list_series", {
     description: "List all series in the library with book counts.",
   }, async () => {
-    const series = await listSeries();
+    const series = await storage.listSeries();
     return {
       content: [{ type: "text", text: JSON.stringify(series, null, 2) }],
     };
@@ -113,7 +97,7 @@ export function createMcpServer(): McpServer {
       format: z.string().describe("File format (e.g. EPUB, PDF, MOBI)"),
     },
   }, async ({ id, format }) => {
-    const url = createSignedUrl(BASE_URL, `/download${bookDownloadPath(format, id)}`, 300);
+    const url = createSignedUrl(baseUrl, `/download${storage.bookDownloadPath(format, id)}`, 300);
     return {
       content: [{ type: "text", text: url }],
     };
@@ -122,7 +106,7 @@ export function createMcpServer(): McpServer {
   server.registerTool("get_upload_link", {
     description: "Get a temporary upload link to add a book to the Calibre library. Returns a signed URL that opens a file upload form in the browser. The link expires in 10 minutes.",
   }, async () => {
-    const url = createSignedUrl(BASE_URL, "/upload", 600);
+    const url = createSignedUrl(baseUrl, "/upload", 600);
     return {
       content: [{ type: "text", text: url }],
     };
@@ -134,8 +118,8 @@ export function createMcpServer(): McpServer {
       id: z.number().describe("The book ID"),
     },
   }, async ({ id }) => {
-    const book = await getBook(id);
-    const url = createSignedUrl(BASE_URL, `/view/${id}`, 600);
+    const book = await storage.getBook(id);
+    const url = createSignedUrl(baseUrl, `/view/${id}`, 600);
     const label = book ? `View "${book.title}"` : "View book";
     return {
       content: [{ type: "text", text: `[${label}](${url})` }],
@@ -150,7 +134,7 @@ export function createMcpServer(): McpServer {
     },
   }, async ({ id, fields }) => {
     try {
-      await setMetadata(id, fields as Record<string, unknown>);
+      await storage.setMetadata(id, fields as Record<string, unknown>);
       return {
         content: [{ type: "text", text: "Metadata updated successfully." }],
       };
@@ -170,7 +154,7 @@ export function createMcpServer(): McpServer {
     },
   }, async ({ id, image_url }) => {
     try {
-      await setCover(id, image_url);
+      await storage.setCover(id, image_url);
       return {
         content: [{ type: "text", text: "Cover updated successfully." }],
       };
@@ -189,7 +173,7 @@ export function createMcpServer(): McpServer {
     },
   }, async ({ ids }) => {
     try {
-      await deleteBooks(ids);
+      await storage.deleteBooks(ids);
       const label = ids.length === 1 ? `Book ${ids[0]} removed.` : `${ids.length} books removed.`;
       return {
         content: [{ type: "text", text: label }],
@@ -210,7 +194,7 @@ export function createMcpServer(): McpServer {
     },
   }, async ({ id, formats }) => {
     try {
-      await removeFormats(id, formats);
+      await storage.removeFormats(id, formats);
       return {
         content: [{ type: "text", text: `Removed ${formats.join(", ")} from book ${id}.` }],
       };
@@ -231,7 +215,7 @@ export function createMcpServer(): McpServer {
     },
   }, async ({ id, from_format, to_format }) => {
     try {
-      const result = await convertBook(id, from_format, to_format);
+      const result = await storage.convertBook(id, from_format, to_format);
       return {
         content: [{ type: "text", text: result }],
       };
@@ -355,15 +339,15 @@ export function createMcpServer(): McpServer {
   }, async ({ device_name, book_id, format }) => {
     try {
       // Get book metadata for the filename
-      const book = await getBook(book_id);
+      const book = await storage.getBook(book_id);
       if (!book) throw new Error(`Book ${book_id} not found`);
       const ext = format.toLowerCase();
       const authors = (book.authors as string[])?.join(" & ") ?? "";
       const rawName = authors ? `${book.title} - ${authors}.${ext}` : `${book.title}.${ext}`;
       const filename = rawName.replace(/[:<>?*"|\\\/]/g, "_");
 
-      const downloadPath = bookDownloadPath(format, book_id);
-      const res = await downloadBook(downloadPath);
+      const downloadPath = storage.bookDownloadPath(format, book_id);
+      const res = await storage.downloadBook(downloadPath);
       if (!res.ok) {
         const body = await res.text();
         throw new Error(`Failed to download book (${res.status}): ${body}`);

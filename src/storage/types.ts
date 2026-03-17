@@ -1,0 +1,69 @@
+export interface BookSummary {
+  id: number;
+  title: string;
+  authors: string[];
+  timestamp: string;
+  pubdate: string;
+  formats: string[];
+  series: string | null;
+  series_index: number | null;
+  has_cover: boolean;
+}
+
+export interface BookDetail {
+  id: number;
+  title: string;
+  authors: string[];
+  author_sort: string;
+  timestamp: string;
+  pubdate: string;
+  last_modified: string;
+  series: string | null;
+  series_index: number | null;
+  publisher: string | null;
+  rating: number | null;
+  tags: string[];
+  formats: string[];
+  identifiers: Record<string, string>;
+  languages: string[];
+  comments: string | null;
+  has_cover: boolean;
+  cover: string | null;
+  custom_columns: Record<string, { name: string; datatype: string; value: unknown }>;
+}
+
+export interface CategoryItem {
+  name: string;
+  count: number;
+}
+
+export interface AddBookResult {
+  book_id: number;
+  title: string;
+  authors: string[];
+}
+
+export interface StorageBackend {
+  // Read
+  listBooks(opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number }>;
+  getBook(id: number): Promise<BookDetail | null>;
+  searchBooks(query: string, opts?: { limit?: number; offset?: number }): Promise<{ results: BookSummary[]; count: number }>;
+  listAuthors(): Promise<CategoryItem[]>;
+  listTags(): Promise<CategoryItem[]>;
+  listSeries(): Promise<CategoryItem[]>;
+
+  // Write
+  addBook(filename: string, data: Buffer): Promise<AddBookResult>;
+  setMetadata(bookId: number, fields: Record<string, unknown>): Promise<void>;
+  setCover(bookId: number, imageUrl: string): Promise<void>;
+  removeFormats(bookId: number, formats: string[]): Promise<void>;
+  deleteBooks(bookIds: number[]): Promise<void>;
+
+  // Conversion
+  convertBook(bookId: number, inputFmt: string, outputFmt: string): Promise<string>;
+
+  // File access
+  bookDownloadPath(format: string, id: number): string;
+  downloadBook(path: string): Promise<Response>;
+  getBookCover(id: number): Promise<Buffer | null>;
+}

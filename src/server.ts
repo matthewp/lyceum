@@ -17,15 +17,17 @@ import {
 import { renderToString, SafeHTML } from "./html.ts";
 import { landingPage, authorizePage, uploadPage, viewBookPage } from "./templates.ts";
 import { parseMultipart } from "./multipart.ts";
-import { addBook, downloadBook, getBook, getBookCover } from "./calibre.ts";
+import type { StorageBackend } from "./storage/index.ts";
 
 export interface ServerConfig {
   port: number;
   baseUrl: string;
+  storage: StorageBackend;
 }
 
 let PORT: number;
 let BASE_URL: string;
+let storage: StorageBackend;
 
 function json(res: import("node:http").ServerResponse, data: unknown, status = 200) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -58,6 +60,7 @@ function readBodyRaw(req: import("node:http").IncomingMessage): Promise<Buffer> 
 export function startServer(config: ServerConfig) {
   PORT = config.port;
   BASE_URL = config.baseUrl;
+  storage = config.storage;
 
   const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", BASE_URL);
@@ -219,7 +222,7 @@ export function startServer(config: ServerConfig) {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
       });
-      const mcpServer = createMcpServer();
+      const mcpServer = createMcpServer(storage, BASE_URL);
       await mcpServer.connect(transport);
 
       const body = await readBody(req);
@@ -247,14 +250,14 @@ export function startServer(config: ServerConfig) {
 
     const bookId = parseInt(viewMatch[1], 10);
     try {
-      const book = await getBook(bookId);
+      const book = await storage.getBook(bookId);
       if (!book) {
         json(res, { error: "Book not found" }, 404);
         return;
       }
 
       let coverDataUrl = "";
-      const coverBuf = await getBookCover(bookId);
+      const coverBuf = await storage.getBookCover(bookId);
       if (coverBuf) {
         coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
       }
@@ -278,7 +281,7 @@ export function startServer(config: ServerConfig) {
     }
 
     try {
-      const upstream = await downloadBook(downloadPath);
+      const upstream = await storage.downloadBook(downloadPath);
       if (!upstream.ok) {
         res.writeHead(upstream.status);
         res.end();
@@ -325,7 +328,7 @@ export function startServer(config: ServerConfig) {
       }
 
       try {
-        const result = await addBook(file.filename, file.data);
+        const result = await storage.addBook(file.filename, file.data);
         sendHtml(res, uploadPage({ success: `Added "${result.title}" (ID: ${result.book_id})` }));
       } catch (e: any) {
         sendHtml(res, uploadPage({ error: `Upload failed: ${e.message}` }), 500);
