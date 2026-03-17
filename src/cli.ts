@@ -12,6 +12,7 @@ const { values, positionals } = parseArgs({
     },
     "base-url": {
       type: "string",
+      default: process.env.BASE_URL,
     },
     storage: {
       type: "string",
