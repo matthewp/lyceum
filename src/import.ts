@@ -1,6 +1,7 @@
 import { CalibreBackend } from "./storage/calibre.ts";
 import { DiskFileStore } from "./storage/filestore.ts";
 import { openDatabase, insertFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries, bookDirPath, bookFilePath, coverFilePath } from "./storage/database.ts";
+import { extractMetadata } from "./metadata-extract/index.ts";
 import { join } from "node:path";
 import { logger as root } from "./logger.ts";
 
@@ -65,7 +66,7 @@ export async function importFromCalibre(config: ImportConfig) {
           detail.comments,
           seriesId,
           detail.series_index,
-          detail.has_cover ? 1 : 0,
+          0,
           detail.read_at || null,
           detail.timestamp || new Date().toISOString(),
           detail.last_modified || new Date().toISOString(),
@@ -133,16 +134,36 @@ export async function importFromCalibre(config: ImportConfig) {
         }
       }
 
-      // Download and store cover
-      if (detail.has_cover) {
-        try {
-          const coverData = await calibre.getBookCover(summary.id);
-          if (coverData) {
-            await fileStore.put(coverFilePath(path), coverData);
+      // Extract cover: try Calibre API first, fall back to extracting from book file
+      let coverData: Buffer | null = null;
+      try {
+        coverData = await calibre.getBookCover(summary.id);
+      } catch {
+        // Calibre cover fetch failed, will try extraction
+      }
+
+      if (!coverData) {
+        // Try extracting cover from the first downloaded book file
+        for (const format of detail.formats) {
+          const ext = format.toLowerCase();
+          const fileData = await fileStore.get(bookFilePath(path, ext));
+          if (fileData) {
+            try {
+              const meta = await extractMetadata(fileData, `book.${ext}`);
+              if (meta.cover) {
+                coverData = meta.cover;
+                break;
+              }
+            } catch {
+              // extraction failed for this format, try next
+            }
           }
-        } catch (e: any) {
-          log.warn({ bookId, error: e.message }, "Failed to download cover");
         }
+      }
+
+      if (coverData) {
+        await fileStore.put(coverFilePath(path), coverData);
+        db.prepare("UPDATE books SET has_cover = 1 WHERE id = ?").run(bookId);
       }
 
       imported++;
