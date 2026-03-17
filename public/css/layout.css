@@ -1,28 +1,100 @@
 .header {
-  background: #162238;
-  padding: 16px 24px;
+  border-bottom: 2px solid var(--border);
+  padding: 0 40px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+  transition: background-color 200ms, border-color 200ms;
 }
-.header a {
-  color: #fff;
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.logo {
+  font-size: 1.3em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
   text-decoration: none;
-  font-size: 1.1em;
-  font-weight: 600;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
 }
-.header img { height: 28px; }
-
-.container {
-  max-width: 720px;
-  margin: 32px auto;
-  padding: 0 20px;
+.logo-img {
+  height: 28px;
+  background: rgba(0,0,0,0.08);
+  padding: 4px;
+  border-radius: 4px;
+}
+[data-theme="dark"] .logo-img {
+  background: rgba(255,255,255,0.1);
 }
 
-.card {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  overflow: hidden;
-  padding: 28px;
+.nav { display: flex; gap: 24px; }
+.nav a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 1em;
+  transition: color 150ms;
+}
+.nav a:hover, .nav a.active { color: var(--text); }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-form { display: contents; }
+
+.search-box {
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  width: 220px;
+  outline: none;
+  transition: border-color 150ms, background-color 200ms;
+  font-family: var(--font);
+}
+.search-box:focus { border-color: var(--text-secondary); }
+.search-box:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.theme-toggle {
+  background: none;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: border-color 150ms, color 150ms;
+  font-size: 1em;
+}
+.theme-toggle:hover {
+  color: var(--text);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 40px;
+}
+
+@media (max-width: 768px) {
+  .header { padding: 0 20px; }
+  .container { padding: 24px 20px; }
 }

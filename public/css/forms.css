@@ -1,23 +1,57 @@
-h1 { font-size: 1.4em; margin-bottom: 8px; }
-p { margin-bottom: 16px; }
+.form-container {
+  max-width: 400px;
+  margin: 80px auto;
+  padding: 0 20px;
+}
 
-input, button {
+.form-container h1 {
+  font-size: 2em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.form-container p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  font-size: 1em;
+  line-height: 1.5;
+}
+
+input[type="password"],
+input[type="text"],
+input[type="file"] {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  margin: 8px 0;
+  font-size: 1em;
+  font-family: var(--font);
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 150ms;
+}
+input:focus {
+  border-color: var(--text-secondary);
+}
+
+button[type="submit"] {
   display: block;
   width: 100%;
   padding: 10px;
-  margin: 8px 0;
-  box-sizing: border-box;
+  margin: 16px 0 8px;
   font-size: 1em;
-}
-
-button {
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  font-family: var(--font);
+  font-weight: 600;
+  background: var(--text);
+  color: var(--bg);
+  border: 2px solid var(--text);
   cursor: pointer;
+  transition: opacity 150ms;
 }
-button:hover { background: #1d4ed8; }
+button[type="submit"]:hover { opacity: 0.85; }
 
-.success { color: #16a34a; }
-.error { color: #dc2626; }
+.success { color: #16a34a; margin-top: 8px; }
+.error { color: #dc2626; margin-top: 8px; }

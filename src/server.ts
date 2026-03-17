@@ -17,7 +17,7 @@ import {
   verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
-import { landingPage, authorizePage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage } from "./templates.ts";
+import { landingPage, authorizePage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSearchPage } from "./templates.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
 
@@ -111,7 +111,9 @@ export function startServer(config: ServerConfig) {
     try {
       const filePath = join(import.meta.dirname!, "..", "public", ...fileName.split("/"));
       const data = readFileSync(filePath);
-      res.writeHead(200, { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" });
+      const headers: Record<string, string> = { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" };
+      if (fileName === "sw.js") headers["Service-Worker-Allowed"] = "/";
+      res.writeHead(200, headers);
       res.end(data);
     } catch {
       json(res, { error: "Not found" }, 404);
@@ -266,7 +268,7 @@ export function startServer(config: ServerConfig) {
         coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
       }
 
-      sendHtml(res, viewBookPage(book, coverDataUrl));
+      sendHtml(res, viewBookPage(book, "mcp", coverDataUrl));
     } catch (e: any) {
       json(res, { error: e.message }, 500);
     }
@@ -383,6 +385,19 @@ export function startServer(config: ServerConfig) {
       return;
     }
 
+    // Search
+    if (req.method === "GET" && path === "/app/search") {
+      const q = url.searchParams.get("q") ?? "";
+      if (!q) {
+        res.writeHead(302, { Location: "/app" });
+        res.end();
+        return;
+      }
+      const { results, count } = await storage.searchBooks(q, { limit: 100 });
+      sendHtml(res, appSearchPage(q, results, count));
+      return;
+    }
+
     // Tag page
     const tagMatch = path.match(/^\/app\/tag\/(.+)$/);
     if (req.method === "GET" && tagMatch) {
@@ -403,12 +418,7 @@ export function startServer(config: ServerConfig) {
         json(res, { error: "Book not found" }, 404);
         return;
       }
-      let coverDataUrl = "";
-      const coverBuf = await storage.getBookCover(bookId);
-      if (coverBuf) {
-        coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
-      }
-      sendHtml(res, viewBookPage(book, coverDataUrl));
+      sendHtml(res, viewBookPage(book, "app"));
       return;
     }
 
