@@ -24,8 +24,8 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("list_books", {
     description: "List books in the Calibre library, sorted by most recently added.",
     inputSchema: {
-      limit: z.number().optional().describe("Max books to return (default 20)"),
-      offset: z.number().optional().describe("Offset for pagination (default 0)"),
+      limit: z.coerce.number().optional().describe("Max books to return (default 20)"),
+      offset: z.coerce.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ limit, offset }) => {
     const result = await storage.listBooks({ limit: limit ?? 20, offset: offset ?? 0 });
@@ -37,7 +37,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("get_book", {
     description: "Get full details for a specific book by ID, including authors, tags, series, formats, and description.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
     },
   }, async ({ id }) => {
     const book = await storage.getBook(id);
@@ -53,8 +53,8 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
     description: "Search books by title, author, tag, or series name. Supports Calibre's search syntax (e.g. author:Asimov, tag:sci-fi).",
     inputSchema: {
       query: z.string().describe("Search query"),
-      limit: z.number().optional().describe("Max results (default 20)"),
-      offset: z.number().optional().describe("Offset for pagination (default 0)"),
+      limit: z.coerce.number().optional().describe("Max results (default 20)"),
+      offset: z.coerce.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ query, limit, offset }) => {
     const result = await storage.searchBooks(query, { limit: limit ?? 20, offset: offset ?? 0 });
@@ -93,7 +93,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("get_download_link", {
     description: "Get a temporary download link for a book file. Returns a signed URL that expires in 5 minutes.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       format: z.string().describe("File format (e.g. EPUB, PDF, MOBI)"),
     },
   }, async ({ id, format }) => {
@@ -115,7 +115,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("get_view_link", {
     description: "Get a temporary link to view a book's details page showing its cover and metadata. Returns a signed URL that expires in 10 minutes. IMPORTANT: Always present this URL as a markdown link like [View Book](url) so the full URL is preserved in the href.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
     },
   }, async ({ id }) => {
     const book = await storage.getBook(id);
@@ -129,7 +129,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("set_metadata", {
     description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       fields: z.record(z.string(), z.unknown()).describe('Metadata fields to set (e.g. {"title": "New Title", "tags": ["fiction", "sci-fi"], "authors": ["Author Name"]})'),
     },
   }, async ({ id, fields }) => {
@@ -149,7 +149,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("set_cover", {
     description: "Set a book's cover image from a URL. Use this after fetch_metadata to apply a cover from the returned cover_url.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       image_url: z.string().describe("URL of the cover image to download and set"),
     },
   }, async ({ id, image_url }) => {
@@ -169,7 +169,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("remove_book", {
     description: "Permanently remove one or more books from the Calibre library. This cannot be undone.",
     inputSchema: {
-      ids: z.array(z.number()).describe("Array of book IDs to remove"),
+      ids: z.array(z.coerce.number()).describe("Array of book IDs to remove"),
     },
   }, async ({ ids }) => {
     try {
@@ -189,7 +189,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("remove_format", {
     description: "Remove one or more file formats from a book (e.g. remove the MOBI copy but keep EPUB).",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       formats: z.array(z.string()).describe("Formats to remove (e.g. [\"EPUB\", \"MOBI\"])"),
     },
   }, async ({ id, formats }) => {
@@ -209,7 +209,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   server.registerTool("convert_book", {
     description: "Convert a book to a different format (e.g. EPUB to MOBI). This may take a few minutes.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       from_format: z.string().describe("Source format (e.g. EPUB)"),
       to_format: z.string().describe("Target format (e.g. MOBI, PDF, AZW3)"),
     },
