@@ -13,9 +13,11 @@ import {
   validateToken,
   verifySignedUrl,
   checkPassword,
+  createSessionCookie,
+  verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
-import { landingPage, authorizePage, uploadPage, viewBookPage } from "./templates.ts";
+import { landingPage, authorizePage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage } from "./templates.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
 
@@ -92,9 +94,10 @@ export function startServer(config: ServerConfig) {
       ".png": "image/png",
       ".ico": "image/x-icon",
       ".svg": "image/svg+xml",
+      ".css": "text/css",
     };
     const fileName = path.slice("/public/".length);
-    if (fileName.includes("..") || fileName.includes("/")) {
+    if (fileName.includes("..")) {
       json(res, { error: "Not found" }, 404);
       return;
     }
@@ -105,7 +108,7 @@ export function startServer(config: ServerConfig) {
       return;
     }
     try {
-      const filePath = join(import.meta.dirname!, "..", "public", fileName);
+      const filePath = join(import.meta.dirname!, "..", "public", ...fileName.split("/"));
       const data = readFileSync(filePath);
       res.writeHead(200, { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" });
       res.end(data);
@@ -333,6 +336,93 @@ export function startServer(config: ServerConfig) {
       } catch (e: any) {
         sendHtml(res, uploadPage({ error: `Upload failed: ${e.message}` }), 500);
       }
+      return;
+    }
+  }
+
+  // --- App: Login ---
+  if (path === "/app/login") {
+    if (req.method === "GET") {
+      sendHtml(res, appLoginPage());
+      return;
+    }
+
+    if (req.method === "POST") {
+      const body = new URLSearchParams(await readBody(req));
+      const password = body.get("password") ?? "";
+
+      if (!checkPassword(password)) {
+        sendHtml(res, appLoginPage({ error: "Wrong password." }), 401);
+        return;
+      }
+
+      res.writeHead(302, {
+        Location: "/app",
+        "Set-Cookie": createSessionCookie(),
+      });
+      res.end();
+      return;
+    }
+  }
+
+  // --- App: Protected routes ---
+  if (path.startsWith("/app")) {
+    if (!verifySessionCookie(req.headers.cookie)) {
+      res.writeHead(302, { Location: "/app/login" });
+      res.end();
+      return;
+    }
+
+    // Book list
+    if (req.method === "GET" && path === "/app") {
+      const { books, total } = await storage.listBooks({ limit: 100 });
+      sendHtml(res, appBooksPage(books, total));
+      return;
+    }
+
+    // Tag page
+    const tagMatch = path.match(/^\/app\/tag\/(.+)$/);
+    if (req.method === "GET" && tagMatch) {
+      const tag = decodeURIComponent(tagMatch[1]);
+      const { books, total } = await storage.listBooksByTag(tag, { limit: 100 });
+      sendHtml(res, appTagPage(tag, books, total));
+      return;
+    }
+
+    // Book detail
+    const bookMatch = path.match(/^\/app\/book\/(\d+)$/);
+    if (req.method === "GET" && bookMatch) {
+      const bookId = parseInt(bookMatch[1], 10);
+      const book = await storage.getBook(bookId);
+      if (!book) {
+        json(res, { error: "Book not found" }, 404);
+        return;
+      }
+      let coverDataUrl = "";
+      const coverBuf = await storage.getBookCover(bookId);
+      if (coverBuf) {
+        coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
+      }
+      sendHtml(res, viewBookPage(book, coverDataUrl));
+      return;
+    }
+
+    // Cover thumbnail
+    const coverMatch = path.match(/^\/app\/cover\/(\d+)$/);
+    if (req.method === "GET" && coverMatch) {
+      const bookId = parseInt(coverMatch[1], 10);
+      const coverBuf = await storage.getBookCover(bookId);
+      if (!coverBuf) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": String(coverBuf.byteLength),
+        "Cache-Control": "public, max-age=86400",
+      });
+      res.end(coverBuf);
       return;
     }
   }

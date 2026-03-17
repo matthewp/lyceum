@@ -1,0 +1,28 @@
+.header {
+  background: #162238;
+  padding: 16px 24px;
+}
+.header a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.1em;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.header img { height: 28px; }
+
+.container {
+  max-width: 720px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+  padding: 28px;
+}

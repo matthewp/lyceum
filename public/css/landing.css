@@ -1,0 +1,67 @@
+body {
+  font-family: system-ui;
+  max-width: 520px;
+  margin: 80px auto;
+  padding: 0 20px;
+}
+
+.logo {
+  display: block;
+  width: 120px;
+  height: auto;
+  margin-bottom: 16px;
+  background: #162238;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+h1 { font-size: 1.6em; margin-bottom: 0.2em; }
+.tagline { color: #555; margin-top: 0; }
+
+.features { list-style: none; padding: 0; }
+.features li { padding: 6px 0; }
+.features li::before {
+  content: "\2022";
+  color: #2563eb;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.mcp-badge {
+  display: inline-block;
+  background: #f0f4ff;
+  border: 1px solid #c7d6f5;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.85em;
+  color: #2563eb;
+}
+
+h2 { font-size: 1.1em; margin-top: 32px; }
+
+pre {
+  background: #f5f5f5;
+  padding: 12px 16px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+code { font-size: 0.95em; }
+
+footer {
+  margin-top: 40px;
+  font-size: 0.85em;
+  color: #888;
+}
+footer a {
+  color: #1a1a1a;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+footer svg { vertical-align: middle; }
+
+@media (max-width: 560px) {
+  body { margin-top: 40px; }
+  pre { font-size: 0.85em; }
+}

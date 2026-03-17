@@ -81,6 +81,7 @@ function formatBook(raw: any): BookSummary {
     timestamp: raw.timestamp,
     pubdate: raw.pubdate,
     formats: raw.formats ?? [],
+    tags: raw.tags ?? [],
     series: raw.series ?? null,
     series_index: raw.series_index ?? null,
     has_cover: raw.has_cover ?? false,
@@ -277,6 +278,11 @@ export class CalibreBackend implements StorageBackend {
       name: item.name,
       count: item.count,
     }));
+  }
+
+  async listBooksByTag(tag: string, opts: { limit?: number; offset?: number } = {}) {
+    const result = await this.searchBooks(`tags:"=${tag}"`, opts);
+    return { books: result.results, total: result.count };
   }
 
   // --- Write operations ---

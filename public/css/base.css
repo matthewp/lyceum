@@ -1,0 +1,29 @@
+@view-transition { navigation: auto; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f8f9fa;
+  color: #1a1a1a;
+  min-height: 100vh;
+}
+
+a { color: #2563eb; }
+
+.tag {
+  background: #f0f4ff;
+  color: #2563eb;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 0.85em;
+}
+
+.format {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 0.85em;
+  font-weight: 500;
+}

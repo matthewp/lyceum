@@ -1,0 +1,23 @@
+h1 { font-size: 1.4em; margin-bottom: 8px; }
+p { margin-bottom: 16px; }
+
+input, button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  box-sizing: border-box;
+  font-size: 1em;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover { background: #1d4ed8; }
+
+.success { color: #16a34a; }
+.error { color: #dc2626; }

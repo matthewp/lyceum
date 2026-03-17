@@ -131,6 +131,34 @@ export function createSignedUrl(baseUrl: string, path: string, ttlSeconds = 300)
   return `${baseUrl}${path}?expires=${expires}&sig=${signature}`;
 }
 
+// --- Session cookies for /app ---
+
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
+
+export function createSessionCookie(): string {
+  const expires = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE;
+  const data = `session:${expires}`;
+  const sig = createHmac("sha256", SIGNING_KEY).update(data).digest("hex");
+  const value = `${expires}.${sig}`;
+  return `session=${value}; Path=/app; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`;
+}
+
+export function verifySessionCookie(cookieHeader: string | undefined): boolean {
+  if (!cookieHeader) return false;
+  const match = cookieHeader.match(/(?:^|;\s*)session=(\d+)\.([a-f0-9]+)/);
+  if (!match) return false;
+  const [, expires, sig] = match;
+  const now = Math.floor(Date.now() / 1000);
+  if (now > parseInt(expires, 10)) return false;
+  const data = `session:${expires}`;
+  const expected = createHmac("sha256", SIGNING_KEY).update(data).digest("hex");
+  try {
+    return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
 export function verifySignedUrl(path: string, expires: string, signature: string): boolean {
   const now = Math.floor(Date.now() / 1000);
   if (now > parseInt(expires, 10)) return false;

@@ -120,6 +120,27 @@ export class LocalBackend implements StorageBackend {
     `).all() as CategoryItem[];
   }
 
+  async listBooksByTag(tag: string, opts: { limit?: number; offset?: number } = {}) {
+    const limit = opts.limit ?? 100;
+    const offset = opts.offset ?? 0;
+
+    const total = (this.db.prepare(`
+      SELECT COUNT(*) as count FROM book_tags bt
+      JOIN tags t ON t.id = bt.tag_id WHERE t.name = ?
+    `).get(tag) as { count: number }).count;
+
+    const rows = this.db.prepare(`
+      SELECT b.*, s.name as series_name FROM books b
+      LEFT JOIN series s ON b.series_id = s.id
+      JOIN book_tags bt ON bt.book_id = b.id
+      JOIN tags t ON t.id = bt.tag_id
+      WHERE t.name = ?
+      ORDER BY b.created_at DESC LIMIT ? OFFSET ?
+    `).all(tag, limit, offset) as BookRow[];
+
+    return { books: rows.map(row => this.rowToSummary(row)), total };
+  }
+
   async listSeries(): Promise<CategoryItem[]> {
     return this.db.prepare(`
       SELECT s.name, COUNT(b.id) as count
@@ -510,6 +531,7 @@ export class LocalBackend implements StorageBackend {
       timestamp: row.created_at,
       pubdate: row.pubdate ?? "",
       formats: this.getFormats(row.id),
+      tags: this.getTags(row.id),
       series: row.series_name,
       series_index: row.series_index,
       has_cover: row.has_cover === 1,

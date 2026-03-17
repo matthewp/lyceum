@@ -5,6 +5,7 @@ export interface BookSummary {
   timestamp: string;
   pubdate: string;
   formats: string[];
+  tags: string[];
   series: string | null;
   series_index: number | null;
   has_cover: boolean;
@@ -52,6 +53,7 @@ export interface StorageBackend {
   listAuthors(): Promise<CategoryItem[]>;
   listTags(): Promise<CategoryItem[]>;
   listSeries(): Promise<CategoryItem[]>;
+  listBooksByTag(tag: string, opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number }>;
 
   // Write
   addBook(filename: string, data: Buffer): Promise<AddBookResult>;
