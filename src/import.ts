@@ -1,6 +1,6 @@
 import { CalibreBackend } from "./storage/calibre.ts";
 import { DiskFileStore } from "./storage/filestore.ts";
-import { openDatabase, insertFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries, bookPath } from "./storage/database.ts";
+import { openDatabase, insertFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries, bookDirPath, bookFilePath, coverFilePath } from "./storage/database.ts";
 import { join } from "node:path";
 import { logger as root } from "./logger.ts";
 
@@ -70,7 +70,7 @@ export async function importFromCalibre(config: ImportConfig) {
           detail.last_modified || new Date().toISOString(),
         );
         const bookId = result.lastInsertRowid as number;
-        const path = bookPath(author, detail.title, bookId);
+        const path = bookDirPath(author, detail.title, bookId);
         db.prepare("UPDATE books SET path = ? WHERE id = ?").run(path, bookId);
 
         // Authors
@@ -118,7 +118,7 @@ export async function importFromCalibre(config: ImportConfig) {
           if (res.ok) {
             const data = Buffer.from(await res.arrayBuffer());
             const ext = format.toLowerCase();
-            const key = `${path}/book.${ext}`;
+            const key = bookFilePath(path, ext);
             fileStore.put(key, data);
 
             db.prepare("INSERT INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)").run(
@@ -137,7 +137,7 @@ export async function importFromCalibre(config: ImportConfig) {
         try {
           const coverData = await calibre.getBookCover(summary.id);
           if (coverData) {
-            fileStore.put(`${path}/cover.jpg`, coverData);
+            fileStore.put(coverFilePath(path), coverData);
           }
         } catch (e: any) {
           log.warn({ bookId, error: e.message }, "Failed to download cover");

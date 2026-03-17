@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { openDatabase, bookPath, insertFts, deleteFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries } from "./database.ts";
+import { openDatabase, bookDirPath, bookFilePath, coverFilePath, insertFts, deleteFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries } from "./database.ts";
 import type { FileStore } from "./filestore.ts";
 import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult } from "./types.ts";
 import { extractMetadata } from "../metadata-extract/index.ts";
@@ -154,7 +154,7 @@ export class LocalBackend implements StorageBackend {
       const id = result.lastInsertRowid as number;
 
       // Set real path
-      const path = bookPath(authors[0], title, id);
+      const path = bookDirPath(authors[0], title, id);
       this.db.prepare("UPDATE books SET path = ? WHERE id = ?").run(path, id);
 
       // Authors
@@ -198,11 +198,11 @@ export class LocalBackend implements StorageBackend {
     })();
 
     // Store the book file
-    this.files.put(`${bookId.path}/book.${ext}`, data);
+    this.files.put(bookFilePath(bookId.path, ext), data);
 
     // Store cover if extracted
     if (meta.cover) {
-      this.files.put(`${bookId.path}/cover.jpg`, meta.cover);
+      this.files.put(coverFilePath(bookId.path), meta.cover);
       this.db.prepare("UPDATE books SET has_cover = 1 WHERE id = ?").run(bookId.id);
     }
 
@@ -305,7 +305,7 @@ export class LocalBackend implements StorageBackend {
       if ("title" in fields || "authors" in fields) {
         const newAuthors = this.getAuthors(bookId);
         const newTitle = updated.title;
-        const newPath = bookPath(newAuthors[0] ?? "Unknown", newTitle, bookId);
+        const newPath = bookDirPath(newAuthors[0] ?? "Unknown", newTitle, bookId);
         const oldPath = row.path;
         if (newPath !== oldPath) {
           this.files.rename(oldPath, newPath);
@@ -323,7 +323,7 @@ export class LocalBackend implements StorageBackend {
     if (!res.ok) throw new Error(`Failed to download cover image: ${res.status}`);
     const data = Buffer.from(await res.arrayBuffer());
 
-    this.files.put(`${row.path}/cover.jpg`, data);
+    this.files.put(coverFilePath(row.path), data);
     this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
   }
 
@@ -335,7 +335,7 @@ export class LocalBackend implements StorageBackend {
       const upper = format.toUpperCase();
       const ext = format.toLowerCase();
       this.db.prepare("DELETE FROM formats WHERE book_id = ? AND format = ?").run(bookId, upper);
-      this.files.delete(`${row.path}/book.${ext}`);
+      this.files.delete(bookFilePath(row.path, ext));
     }
   }
 
@@ -347,9 +347,9 @@ export class LocalBackend implements StorageBackend {
       // Delete files
       const formats = this.getFormats(id);
       for (const fmt of formats) {
-        this.files.delete(`${row.path}/book.${fmt.toLowerCase()}`);
+        this.files.delete(bookFilePath(row.path, fmt));
       }
-      this.files.delete(`${row.path}/cover.jpg`);
+      this.files.delete(coverFilePath(row.path));
 
       // Delete DB records (cascade handles join tables)
       deleteFts(this.db, id);
@@ -374,7 +374,7 @@ export class LocalBackend implements StorageBackend {
 
     const inputExt = inputFmt.toLowerCase();
     const outputExt = outputFmt.toLowerCase();
-    const sourceData = this.files.get(`${row.path}/book.${inputExt}`);
+    const sourceData = this.files.get(bookFilePath(row.path, inputExt));
     if (!sourceData) throw new Error(`Format ${inputFmt} not found for book ${bookId}`);
 
     // POST to ebook-converter-api
@@ -401,7 +401,7 @@ export class LocalBackend implements StorageBackend {
     const converted = Buffer.from(await res.arrayBuffer());
 
     // Store the converted file
-    this.files.put(`${row.path}/book.${outputExt}`, converted);
+    this.files.put(bookFilePath(row.path, outputExt), converted);
     this.db.prepare(
       "INSERT OR REPLACE INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)"
     ).run(bookId, outputFmt.toUpperCase(), `book.${outputExt}`, converted.length);
@@ -426,7 +426,7 @@ export class LocalBackend implements StorageBackend {
     const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(id) as { path: string } | undefined;
     if (!row) return new Response(null, { status: 404 });
 
-    const data = this.files.get(`${row.path}/book.${format}`);
+    const data = this.files.get(bookFilePath(row.path, format));
     if (!data) return new Response(null, { status: 404 });
 
     const mimeTypes: Record<string, string> = {
@@ -448,7 +448,7 @@ export class LocalBackend implements StorageBackend {
   async getBookCover(id: number): Promise<Buffer | null> {
     const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(id) as { path: string } | undefined;
     if (!row) return null;
-    return this.files.get(`${row.path}/cover.jpg`);
+    return this.files.get(coverFilePath(row.path));
   }
 
   // --- Private helpers ---

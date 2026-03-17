@@ -106,8 +106,16 @@ function sanitizePath(s: string): string {
   return s.replace(/[<>:"/\\|?*]/g, "_").replace(/\.+$/, "").trim() || "Unknown";
 }
 
-export function bookPath(author: string, title: string, id: number): string {
+export function bookDirPath(author: string, title: string, id: number): string {
   return `books/${sanitizePath(author)}/${sanitizePath(title)} (${id})`;
+}
+
+export function bookFilePath(dirPath: string, format: string): string {
+  return `${dirPath}/book.${format.toLowerCase()}`;
+}
+
+export function coverFilePath(dirPath: string): string {
+  return `${dirPath}/cover.jpg`;
 }
 
 export function getOrCreateAuthor(db: Database.Database, name: string): number {
