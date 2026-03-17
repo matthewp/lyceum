@@ -119,10 +119,10 @@ export async function importFromCalibre(config: ImportConfig) {
             const data = Buffer.from(await res.arrayBuffer());
             const ext = format.toLowerCase();
             const key = bookFilePath(path, ext);
-            fileStore.put(key, data);
+            await fileStore.put(key, data);
 
             db.prepare("INSERT INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)").run(
-              bookId, format.toUpperCase(), `book.${ext}`, data.length
+              bookId, format.toUpperCase(), `book.${ext}`, data.byteLength
             );
 
             log.debug({ bookId, format }, "Stored format");
@@ -137,7 +137,7 @@ export async function importFromCalibre(config: ImportConfig) {
         try {
           const coverData = await calibre.getBookCover(summary.id);
           if (coverData) {
-            fileStore.put(coverFilePath(path), coverData);
+            await fileStore.put(coverFilePath(path), coverData);
           }
         } catch (e: any) {
           log.warn({ bookId, error: e.message }, "Failed to download cover");

@@ -1,13 +1,13 @@
-import { readFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync, existsSync, renameSync } from "node:fs";
+import { readFile, writeFile, mkdir, unlink, readdir, rename as fsRename, access } from "node:fs/promises";
 import { join, dirname } from "node:path";
 
 export interface FileStore {
-  put(key: string, data: Buffer): void;
-  get(key: string): Buffer | null;
-  delete(key: string): void;
-  exists(key: string): boolean;
-  list(prefix: string): string[];
-  rename(oldKey: string, newKey: string): void;
+  put(key: string, data: Buffer): Promise<void>;
+  get(key: string): Promise<Buffer | null>;
+  delete(key: string): Promise<void>;
+  exists(key: string): Promise<boolean>;
+  list(prefix: string): Promise<string[]>;
+  rename(oldKey: string, newKey: string): Promise<void>;
 }
 
 export class DiskFileStore implements FileStore {
@@ -21,46 +21,49 @@ export class DiskFileStore implements FileStore {
     return join(this.root, key);
   }
 
-  put(key: string, data: Buffer): void {
+  async put(key: string, data: Buffer): Promise<void> {
     const path = this.resolve(key);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, data);
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, data);
   }
 
-  get(key: string): Buffer | null {
-    const path = this.resolve(key);
+  async get(key: string): Promise<Buffer | null> {
     try {
-      return readFileSync(path);
+      return await readFile(this.resolve(key));
     } catch {
       return null;
     }
   }
 
-  delete(key: string): void {
+  async delete(key: string): Promise<void> {
     try {
-      unlinkSync(this.resolve(key));
+      await unlink(this.resolve(key));
     } catch {
       // ignore if already gone
     }
   }
 
-  exists(key: string): boolean {
-    return existsSync(this.resolve(key));
+  async exists(key: string): Promise<boolean> {
+    try {
+      await access(this.resolve(key));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  list(prefix: string): string[] {
-    const dir = this.resolve(prefix);
+  async list(prefix: string): Promise<string[]> {
     try {
-      return readdirSync(dir);
+      return await readdir(this.resolve(prefix));
     } catch {
       return [];
     }
   }
 
-  rename(oldKey: string, newKey: string): void {
+  async rename(oldKey: string, newKey: string): Promise<void> {
     const oldPath = this.resolve(oldKey);
     const newPath = this.resolve(newKey);
-    mkdirSync(dirname(newPath), { recursive: true });
-    renameSync(oldPath, newPath);
+    await mkdir(dirname(newPath), { recursive: true });
+    await fsRename(oldPath, newPath);
   }
 }

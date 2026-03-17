@@ -181,7 +181,7 @@ export class LocalBackend implements StorageBackend {
 
       // Format
       this.db.prepare("INSERT INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)").run(
-        id, format, `book.${ext}`, data.length
+        id, format, `book.${ext}`, data.byteLength
       );
 
       // FTS
@@ -198,11 +198,11 @@ export class LocalBackend implements StorageBackend {
     })();
 
     // Store the book file
-    this.files.put(bookFilePath(bookId.path, ext), data);
+    await this.files.put(bookFilePath(bookId.path, ext), data);
 
     // Store cover if extracted
     if (meta.cover) {
-      this.files.put(coverFilePath(bookId.path), meta.cover);
+      await this.files.put(coverFilePath(bookId.path), meta.cover);
       this.db.prepare("UPDATE books SET has_cover = 1 WHERE id = ?").run(bookId.id);
     }
 
@@ -214,7 +214,7 @@ export class LocalBackend implements StorageBackend {
     const row = this.db.prepare("SELECT * FROM books WHERE id = ?").get(bookId) as any;
     if (!row) throw new Error(`Book ${bookId} not found`);
 
-    this.db.transaction(() => {
+    const renameNeeded = this.db.transaction(() => {
       // Update scalar fields
       const scalarMap: Record<string, string> = {
         title: "title",
@@ -301,18 +301,24 @@ export class LocalBackend implements StorageBackend {
         comments: updated.comments ?? "",
       });
 
-      // Rename directory if title or authors changed
+      // Check if directory needs renaming
       if ("title" in fields || "authors" in fields) {
         const newAuthors = this.getAuthors(bookId);
         const newTitle = updated.title;
         const newPath = bookDirPath(newAuthors[0] ?? "Unknown", newTitle, bookId);
         const oldPath = row.path;
         if (newPath !== oldPath) {
-          this.files.rename(oldPath, newPath);
           this.db.prepare("UPDATE books SET path = ? WHERE id = ?").run(newPath, bookId);
+          return { oldPath, newPath };
         }
       }
+      return null;
     })();
+
+    // File rename must happen outside the sync transaction
+    if (renameNeeded) {
+      await this.files.rename(renameNeeded.oldPath, renameNeeded.newPath);
+    }
   }
 
   async setCover(bookId: number, imageUrl: string): Promise<void> {
@@ -323,7 +329,7 @@ export class LocalBackend implements StorageBackend {
     if (!res.ok) throw new Error(`Failed to download cover image: ${res.status}`);
     const data = Buffer.from(await res.arrayBuffer());
 
-    this.files.put(coverFilePath(row.path), data);
+    await this.files.put(coverFilePath(row.path), data);
     this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
   }
 
@@ -335,7 +341,7 @@ export class LocalBackend implements StorageBackend {
       const upper = format.toUpperCase();
       const ext = format.toLowerCase();
       this.db.prepare("DELETE FROM formats WHERE book_id = ? AND format = ?").run(bookId, upper);
-      this.files.delete(bookFilePath(row.path, ext));
+      await this.files.delete(bookFilePath(row.path, ext));
     }
   }
 
@@ -347,9 +353,9 @@ export class LocalBackend implements StorageBackend {
       // Delete files
       const formats = this.getFormats(id);
       for (const fmt of formats) {
-        this.files.delete(bookFilePath(row.path, fmt));
+        await this.files.delete(bookFilePath(row.path, fmt));
       }
-      this.files.delete(coverFilePath(row.path));
+      await this.files.delete(coverFilePath(row.path));
 
       // Delete DB records (cascade handles join tables)
       deleteFts(this.db, id);
@@ -374,7 +380,7 @@ export class LocalBackend implements StorageBackend {
 
     const inputExt = inputFmt.toLowerCase();
     const outputExt = outputFmt.toLowerCase();
-    const sourceData = this.files.get(bookFilePath(row.path, inputExt));
+    const sourceData = await this.files.get(bookFilePath(row.path, inputExt));
     if (!sourceData) throw new Error(`Format ${inputFmt} not found for book ${bookId}`);
 
     // POST to ebook-converter-api
@@ -401,12 +407,12 @@ export class LocalBackend implements StorageBackend {
     const converted = Buffer.from(await res.arrayBuffer());
 
     // Store the converted file
-    this.files.put(bookFilePath(row.path, outputExt), converted);
+    await this.files.put(bookFilePath(row.path, outputExt), converted);
     this.db.prepare(
       "INSERT OR REPLACE INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)"
-    ).run(bookId, outputFmt.toUpperCase(), `book.${outputExt}`, converted.length);
+    ).run(bookId, outputFmt.toUpperCase(), `book.${outputExt}`, converted.byteLength);
 
-    log.info({ bookId, from: inputFmt, to: outputFmt, size: converted.length }, "Conversion complete");
+    log.info({ bookId, from: inputFmt, to: outputFmt, size: converted.byteLength }, "Conversion complete");
     return `Conversion complete: ${outputFmt.toUpperCase()}`;
   }
 
@@ -426,7 +432,7 @@ export class LocalBackend implements StorageBackend {
     const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(id) as { path: string } | undefined;
     if (!row) return new Response(null, { status: 404 });
 
-    const data = this.files.get(bookFilePath(row.path, format));
+    const data = await this.files.get(bookFilePath(row.path, format));
     if (!data) return new Response(null, { status: 404 });
 
     const mimeTypes: Record<string, string> = {
@@ -440,7 +446,7 @@ export class LocalBackend implements StorageBackend {
       status: 200,
       headers: {
         "Content-Type": mimeTypes[format] ?? "application/octet-stream",
-        "Content-Length": String(data.length),
+        "Content-Length": String(data.byteLength),
       },
     });
   }
@@ -448,7 +454,7 @@ export class LocalBackend implements StorageBackend {
   async getBookCover(id: number): Promise<Buffer | null> {
     const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(id) as { path: string } | undefined;
     if (!row) return null;
-    return this.files.get(coverFilePath(row.path));
+    return await this.files.get(coverFilePath(row.path));
   }
 
   // --- Private helpers ---
