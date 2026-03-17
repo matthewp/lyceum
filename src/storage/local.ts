@@ -1,7 +1,8 @@
 import type Database from "better-sqlite3";
-import { openDatabase } from "./database.ts";
+import { openDatabase, bookPath, insertFts, deleteFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries } from "./database.ts";
 import type { FileStore } from "./filestore.ts";
 import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult } from "./types.ts";
+import { extractMetadata } from "../metadata-extract/index.ts";
 import { logger as root } from "../logger.ts";
 
 const log = root.child({ module: "local" });
@@ -123,29 +124,239 @@ export class LocalBackend implements StorageBackend {
     `).all() as CategoryItem[];
   }
 
-  // --- Write operations (Phase 3) ---
+  // --- Write operations ---
 
-  async addBook(_filename: string, _data: Buffer): Promise<AddBookResult> {
-    throw new Error("Write operations not yet implemented for local storage");
+  async addBook(filename: string, data: Buffer): Promise<AddBookResult> {
+    const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+    const format = ext.toUpperCase();
+
+    // Extract metadata from the file
+    const meta = await extractMetadata(data, filename);
+    const title = meta.title || filename.replace(/\.[^.]+$/, "");
+    const authors = meta.authors.length > 0 ? meta.authors : ["Unknown"];
+    const authorSort = authors.map(a => {
+      const parts = a.split(" ");
+      return parts.length > 1 ? `${parts.at(-1)}, ${parts.slice(0, -1).join(" ")}` : a;
+    }).join(" & ");
+
+    const bookId = this.db.transaction(() => {
+      // Insert book with placeholder path
+      const result = this.db.prepare(`
+        INSERT INTO books (title, author_sort, publisher, pubdate, comments, has_cover, path, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 0, '', datetime('now'), datetime('now'))
+      `).run(title, authorSort, meta.publisher, meta.date, meta.description);
+      const id = result.lastInsertRowid as number;
+
+      // Set real path
+      const path = bookPath(authors[0], title, id);
+      this.db.prepare("UPDATE books SET path = ? WHERE id = ?").run(path, id);
+
+      // Authors
+      for (const name of authors) {
+        const authorId = getOrCreateAuthor(this.db, name);
+        this.db.prepare("INSERT OR IGNORE INTO book_authors (book_id, author_id) VALUES (?, ?)").run(id, authorId);
+      }
+
+      // Tags from subjects
+      for (const subject of meta.subjects) {
+        const tagId = getOrCreateTag(this.db, subject);
+        this.db.prepare("INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)").run(id, tagId);
+      }
+
+      // Identifiers
+      if (meta.isbn) {
+        this.db.prepare("INSERT OR IGNORE INTO identifiers (book_id, type, value) VALUES (?, 'isbn', ?)").run(id, meta.isbn);
+      }
+
+      // Language
+      if (meta.language) {
+        this.db.prepare("INSERT OR IGNORE INTO languages (book_id, lang) VALUES (?, ?)").run(id, meta.language);
+      }
+
+      // Format
+      this.db.prepare("INSERT INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)").run(
+        id, format, `book.${ext}`, data.length
+      );
+
+      // FTS
+      insertFts(this.db, id, {
+        title,
+        authors: authors.join(", "),
+        tags: meta.subjects.join(", "),
+        series: "",
+        publisher: meta.publisher ?? "",
+        comments: meta.description ?? "",
+      });
+
+      return { id, path };
+    })();
+
+    // Store the book file
+    this.files.put(`${bookId.path}/book.${ext}`, data);
+
+    // Store cover if extracted
+    if (meta.cover) {
+      this.files.put(`${bookId.path}/cover.jpg`, meta.cover);
+      this.db.prepare("UPDATE books SET has_cover = 1 WHERE id = ?").run(bookId.id);
+    }
+
+    log.info({ id: bookId.id, title, authors, format }, "Book added");
+    return { book_id: bookId.id, title, authors };
   }
 
-  async setMetadata(_bookId: number, _fields: Record<string, unknown>): Promise<void> {
-    throw new Error("Write operations not yet implemented for local storage");
+  async setMetadata(bookId: number, fields: Record<string, unknown>): Promise<void> {
+    const row = this.db.prepare("SELECT * FROM books WHERE id = ?").get(bookId) as any;
+    if (!row) throw new Error(`Book ${bookId} not found`);
+
+    this.db.transaction(() => {
+      // Update scalar fields
+      const scalarMap: Record<string, string> = {
+        title: "title",
+        publisher: "publisher",
+        pubdate: "pubdate",
+        rating: "rating",
+        comments: "comments",
+        series_index: "series_index",
+        read_at: "read_at",
+      };
+
+      for (const [field, column] of Object.entries(scalarMap)) {
+        if (field in fields) {
+          this.db.prepare(`UPDATE books SET ${column} = ?, updated_at = datetime('now') WHERE id = ?`).run(
+            fields[field] as any, bookId
+          );
+        }
+      }
+
+      // Authors
+      if ("authors" in fields && Array.isArray(fields.authors)) {
+        this.db.prepare("DELETE FROM book_authors WHERE book_id = ?").run(bookId);
+        for (const name of fields.authors as string[]) {
+          const authorId = getOrCreateAuthor(this.db, name);
+          this.db.prepare("INSERT OR IGNORE INTO book_authors (book_id, author_id) VALUES (?, ?)").run(bookId, authorId);
+        }
+        // Update author_sort
+        const authors = fields.authors as string[];
+        const authorSort = authors.map(a => {
+          const parts = a.split(" ");
+          return parts.length > 1 ? `${parts.at(-1)}, ${parts.slice(0, -1).join(" ")}` : a;
+        }).join(" & ");
+        this.db.prepare("UPDATE books SET author_sort = ?, updated_at = datetime('now') WHERE id = ?").run(authorSort, bookId);
+      }
+
+      // Tags
+      if ("tags" in fields && Array.isArray(fields.tags)) {
+        this.db.prepare("DELETE FROM book_tags WHERE book_id = ?").run(bookId);
+        for (const name of fields.tags as string[]) {
+          const tagId = getOrCreateTag(this.db, name);
+          this.db.prepare("INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)").run(bookId, tagId);
+        }
+      }
+
+      // Series
+      if ("series" in fields) {
+        const seriesName = fields.series as string | null;
+        if (seriesName) {
+          const seriesId = getOrCreateSeries(this.db, seriesName);
+          this.db.prepare("UPDATE books SET series_id = ?, updated_at = datetime('now') WHERE id = ?").run(seriesId, bookId);
+        } else {
+          this.db.prepare("UPDATE books SET series_id = NULL, updated_at = datetime('now') WHERE id = ?").run(bookId);
+        }
+      }
+
+      // Identifiers
+      if ("identifiers" in fields && typeof fields.identifiers === "object") {
+        this.db.prepare("DELETE FROM identifiers WHERE book_id = ?").run(bookId);
+        for (const [type, value] of Object.entries(fields.identifiers as Record<string, string>)) {
+          this.db.prepare("INSERT INTO identifiers (book_id, type, value) VALUES (?, ?, ?)").run(bookId, type, value);
+        }
+      }
+
+      // Languages
+      if ("languages" in fields && Array.isArray(fields.languages)) {
+        this.db.prepare("DELETE FROM languages WHERE book_id = ?").run(bookId);
+        for (const lang of fields.languages as string[]) {
+          this.db.prepare("INSERT INTO languages (book_id, lang) VALUES (?, ?)").run(bookId, lang);
+        }
+      }
+
+      // Update FTS
+      deleteFts(this.db, bookId);
+      const updated = this.db.prepare(`
+        SELECT b.*, s.name as series_name FROM books b
+        LEFT JOIN series s ON b.series_id = s.id WHERE b.id = ?
+      `).get(bookId) as any;
+      insertFts(this.db, bookId, {
+        title: updated.title,
+        authors: this.getAuthors(bookId).join(", "),
+        tags: this.getTags(bookId).join(", "),
+        series: updated.series_name ?? "",
+        publisher: updated.publisher ?? "",
+        comments: updated.comments ?? "",
+      });
+
+      // Rename directory if title or authors changed
+      if ("title" in fields || "authors" in fields) {
+        const newAuthors = this.getAuthors(bookId);
+        const newTitle = updated.title;
+        const newPath = bookPath(newAuthors[0] ?? "Unknown", newTitle, bookId);
+        const oldPath = row.path;
+        if (newPath !== oldPath) {
+          this.files.rename(oldPath, newPath);
+          this.db.prepare("UPDATE books SET path = ? WHERE id = ?").run(newPath, bookId);
+        }
+      }
+    })();
   }
 
-  async setCover(_bookId: number, _imageUrl: string): Promise<void> {
-    throw new Error("Write operations not yet implemented for local storage");
+  async setCover(bookId: number, imageUrl: string): Promise<void> {
+    const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(bookId) as { path: string } | undefined;
+    if (!row) throw new Error(`Book ${bookId} not found`);
+
+    const res = await fetch(imageUrl);
+    if (!res.ok) throw new Error(`Failed to download cover image: ${res.status}`);
+    const data = Buffer.from(await res.arrayBuffer());
+
+    this.files.put(`${row.path}/cover.jpg`, data);
+    this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
   }
 
-  async removeFormats(_bookId: number, _formats: string[]): Promise<void> {
-    throw new Error("Write operations not yet implemented for local storage");
+  async removeFormats(bookId: number, formats: string[]): Promise<void> {
+    const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(bookId) as { path: string } | undefined;
+    if (!row) throw new Error(`Book ${bookId} not found`);
+
+    for (const format of formats) {
+      const upper = format.toUpperCase();
+      const ext = format.toLowerCase();
+      this.db.prepare("DELETE FROM formats WHERE book_id = ? AND format = ?").run(bookId, upper);
+      this.files.delete(`${row.path}/book.${ext}`);
+    }
   }
 
-  async deleteBooks(_bookIds: number[]): Promise<void> {
-    throw new Error("Write operations not yet implemented for local storage");
+  async deleteBooks(bookIds: number[]): Promise<void> {
+    for (const id of bookIds) {
+      const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(id) as { path: string } | undefined;
+      if (!row) continue;
+
+      // Delete files
+      const formats = this.getFormats(id);
+      for (const fmt of formats) {
+        this.files.delete(`${row.path}/book.${fmt.toLowerCase()}`);
+      }
+      this.files.delete(`${row.path}/cover.jpg`);
+
+      // Delete DB records (cascade handles join tables)
+      deleteFts(this.db, id);
+      this.db.prepare("DELETE FROM formats WHERE book_id = ?").run(id);
+      this.db.prepare("DELETE FROM identifiers WHERE book_id = ?").run(id);
+      this.db.prepare("DELETE FROM languages WHERE book_id = ?").run(id);
+      this.db.prepare("DELETE FROM book_authors WHERE book_id = ?").run(id);
+      this.db.prepare("DELETE FROM book_tags WHERE book_id = ?").run(id);
+      this.db.prepare("DELETE FROM books WHERE id = ?").run(id);
+    }
   }
 
-  // --- Conversion (Phase 3) ---
+  // --- Conversion ---
 
   async convertBook(_bookId: number, _inputFmt: string, _outputFmt: string): Promise<string> {
     throw new Error("Conversion not yet implemented for local storage");

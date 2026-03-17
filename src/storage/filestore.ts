@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync, existsSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 export interface FileStore {
@@ -7,6 +7,7 @@ export interface FileStore {
   delete(key: string): void;
   exists(key: string): boolean;
   list(prefix: string): string[];
+  rename(oldKey: string, newKey: string): void;
 }
 
 export class DiskFileStore implements FileStore {
@@ -54,5 +55,12 @@ export class DiskFileStore implements FileStore {
     } catch {
       return [];
     }
+  }
+
+  rename(oldKey: string, newKey: string): void {
+    const oldPath = this.resolve(oldKey);
+    const newPath = this.resolve(newKey);
+    mkdirSync(dirname(newPath), { recursive: true });
+    renameSync(oldPath, newPath);
   }
 }
