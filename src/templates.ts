@@ -10,6 +10,7 @@ function scriptTags(urls: string[]): UnsafeHTML {
 }
 
 const THEME_BLOCKING_SCRIPT = `<script>if(localStorage.getItem("theme")==="dark")document.documentElement.setAttribute("data-theme","dark")</script>`;
+const VIEW_BLOCKING_SCRIPT = `<script>document.documentElement.setAttribute("data-view",localStorage.getItem("view")||"grid")</script>`;
 
 const GOOGLE_FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">`;
 
@@ -30,6 +31,7 @@ function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML,
   ${cssLinks(stylesheets)}
   ${scriptTags(opts.scripts ?? [])}
   ${unsafeHTML(THEME_BLOCKING_SCRIPT)}
+  ${unsafeHTML(VIEW_BLOCKING_SCRIPT)}
   ${moduleTag}
 </head>
 <body${bodyClass}>
@@ -69,6 +71,20 @@ if(localStorage.getItem("theme")==="dark")document.getElementById("theme-btn").t
 addEventListener("load",()=>quicklink.listen());
 if("serviceWorker"in navigator)navigator.serviceWorker.register("/public/sw.js",{scope:"/"});
 document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();document.querySelector(".search-box")?.focus();}});
+`;
+
+const VIEW_TOGGLE_MODULE = `
+(function(){
+  var btns=document.querySelectorAll(".view-btn");
+  if(!btns.length)return;
+  btns.forEach(function(b){
+    b.addEventListener("click",function(){
+      var nv=b.dataset.view;
+      document.documentElement.setAttribute("data-view",nv);
+      localStorage.setItem("view",nv);
+    });
+  });
+})();
 `;
 
 function appLayout(title: SafeHTML | string, pageStyles: string[], body: SafeHTML, activePage?: string, extraModule?: string, bodyClass?: string): SafeHTML {
@@ -231,7 +247,7 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     ${descriptionBlock}
   </div>`;
 
-    const heroModule = `(function(){var h=document.querySelector('.header'),e=document.querySelector('.book-hero');if(!h||!e)return;new IntersectionObserver(function(entries){h.classList.toggle('opaque',!entries[0].isIntersecting);},{threshold:0,rootMargin:'-60px 0px 0px 0px'}).observe(e);})();`;
+    const heroModule = `(function(){var h=document.querySelector('.header'),e=document.querySelector('.book-hero');if(!h||!e)return;new IntersectionObserver(function(entries){h.classList.toggle('opaque',!entries[0].isIntersecting);},{threshold:0,rootMargin:'-72px 0px 0px 0px'}).observe(e);})();`;
     return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", heroModule, "book-detail-page");
   }
 
@@ -299,47 +315,90 @@ export function appLoginPage(opts?: { error?: string }): SafeHTML {
   return layout("Lyceum - Sign In", ["/public/css/base.css", "/public/css/forms.css"], body);
 }
 
+function viewToggleButtons(): SafeHTML {
+  return html`<div class="view-toggle">
+      <button class="view-btn" data-view="grid">Grid</button>
+      <button class="view-btn" data-view="table">Table</button>
+    </div>`;
+}
+
+function booksContainer(books: BookSummary[]): SafeHTML {
+  return html`<div id="books-container">
+    ${coverWall(books)}
+    ${bookList(books)}
+  </div>`;
+}
+
+function coverWall(books: BookSummary[]): SafeHTML {
+  const cards = books.map(book => {
+    if (book.has_cover) {
+      return html`<a class="book-card" href="/app/book/${book.id}">
+        <div class="cover-wrap">
+          <img src="/app/cover/${book.id}" alt="" style="view-transition-name: cover-${book.id};">
+          <div class="cover-overlay">
+            <span class="cover-title" style="view-transition-name: title-${book.id};">${book.title}</span>
+            <span class="cover-author">${book.authors.join(", ")}</span>
+          </div>
+        </div>
+      </a>`;
+    } else {
+      return html`<a class="book-card" href="/app/book/${book.id}">
+        <div class="cover-wrap no-cover-tile">
+          <span class="no-cover-title" style="view-transition-name: title-${book.id};">${book.title}</span>
+          <span class="no-cover-author">${book.authors.join(", ")}</span>
+        </div>
+      </a>`;
+    }
+  });
+
+  return html`<div class="cover-wall">
+    ${unsafeHTML(cards.map(c => c.toString()).join(""))}
+  </div>`;
+}
+
 function bookList(books: BookSummary[]): SafeHTML {
   const rows = books.map(book => {
     const tagPills = book.tags.map((t: string) =>
       html`<a class="tag" href="/app/tag/${encodeURIComponent(t)}">${t}</a>`
     );
     const coverCell = book.has_cover
-      ? html`<img class="cover-small" src="/app/cover/${book.id}" alt="" style="view-transition-name: cover-${book.id};">`
+      ? html`<img class="cover-small" src="/app/cover/${book.id}" alt="">`
       : html`<span class="no-cover-small"></span>`;
-    const formats = book.formats.join(", ");
+    const formats = book.formats.join(" · ");
     const seriesCell = book.series
       ? html`<span class="row-series">${book.series}${book.series_index != null ? ` #${book.series_index}` : ""}</span>`
       : html``;
     const pubYear = book.pubdate ? new Date(book.pubdate).getFullYear() : null;
-    const yearCell = pubYear && pubYear > 100
-      ? html`<span class="row-year">${pubYear}</span>`
-      : html`<span class="row-year"></span>`;
+    const yearStr = pubYear && pubYear > 100 ? String(pubYear) : "";
 
-    return html`<div class="book-row">
-      ${coverCell}
-      <div class="row-main">
+    return html`<tr class="book-row">
+      <td class="col-cover">${coverCell}</td>
+      <td class="col-title">
         <a class="row-title" href="/app/book/${book.id}" style="view-transition-name: title-${book.id};">${book.title}</a>
         ${seriesCell}
-      </div>
-      <span class="row-author">${book.authors.join(", ")}</span>
-      ${yearCell}
-      <span class="row-tags">${unsafeHTML(tagPills.map((p: SafeHTML) => p.toString()).join(""))}</span>
-      <span class="row-format">${formats}</span>
-    </div>`;
+      </td>
+      <td class="col-author">${book.authors.join(", ")}</td>
+      <td class="col-year">${yearStr}</td>
+      <td class="col-tags"><div class="tag-list">${unsafeHTML(tagPills.map((p: SafeHTML) => p.toString()).join(""))}</div></td>
+      <td class="col-format">${formats}</td>
+    </tr>`;
   });
 
-  return html`<div class="book-list" id="list-view">
-    <div class="list-header">
-      <span class="col-cover"></span>
-      <span class="col-title">Title</span>
-      <span class="col-author">Author</span>
-      <span class="col-year">Year</span>
-      <span class="col-tags">Tags</span>
-      <span class="col-format">Format</span>
-    </div>
-    ${unsafeHTML(rows.map(r => r.toString()).join(""))}
-  </div>`;
+  return html`<table class="book-list">
+    <thead>
+      <tr class="list-header">
+        <th class="col-cover"></th>
+        <th class="col-title">Title</th>
+        <th class="col-author">Author</th>
+        <th class="col-year">Year</th>
+        <th class="col-tags">Tags</th>
+        <th class="col-format">Format</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${unsafeHTML(rows.map(r => r.toString()).join(""))}
+    </tbody>
+  </table>`;
 }
 
 function pagination(page: number, perPage: number, total: number, basePath: string): SafeHTML {
@@ -362,12 +421,13 @@ export function appBooksPage(books: BookSummary[], total: number, page: number, 
   <div class="container">
     <div class="page-header">
       <h1 class="page-title">Library <span class="page-count">${total} books</span></h1>
+      ${viewToggleButtons()}
     </div>
-    ${bookList(books)}
+    ${booksContainer(books)}
     ${pagination(page, perPage, total, basePath)}
   </div>`;
 
-  return appLayout("Lyceum - Library", ["/public/css/book-table.css"], body, "library");
+  return appLayout("Lyceum - Library", ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
 }
 
 export function appTagPage(tag: string, books: BookSummary[], total: number, page: number, perPage: number): SafeHTML {
@@ -376,12 +436,13 @@ export function appTagPage(tag: string, books: BookSummary[], total: number, pag
   <div class="container">
     <div class="page-header">
       <h1 class="page-title">${tag} <span class="page-count">${total} books</span></h1>
+      ${viewToggleButtons()}
     </div>
-    ${bookList(books)}
+    ${booksContainer(books)}
     ${pagination(page, perPage, total, tagBasePath)}
   </div>`;
 
-  return appLayout(html`${tag} - Lyceum`, ["/public/css/book-table.css"], body, "library");
+  return appLayout(html`${tag} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
 }
 
 export function appSearchPage(query: string, books: BookSummary[], count: number): SafeHTML {
@@ -389,9 +450,10 @@ export function appSearchPage(query: string, books: BookSummary[], count: number
   <div class="container">
     <div class="page-header">
       <h1 class="page-title">Results for &#8220;${query}&#8221; <span class="page-count">${count} books</span></h1>
+      ${viewToggleButtons()}
     </div>
-    ${bookList(books)}
+    ${booksContainer(books)}
   </div>`;
 
-  return appLayout(html`Search: ${query} - Lyceum`, ["/public/css/book-table.css"], body, "library");
+  return appLayout(html`Search: ${query} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
 }

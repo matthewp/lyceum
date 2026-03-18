@@ -1,7 +1,7 @@
 .header {
   border-bottom: 2px solid var(--border);
   padding: 0 40px;
-  height: 60px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -15,21 +15,23 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 36px;
 }
 
 .logo {
-  font-size: 1.3em;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.5em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--accent);
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 10px;
+  transition: opacity 150ms;
 }
+.logo:hover { opacity: 0.8; }
 .logo-img {
-  height: 28px;
+  height: 30px;
   background: rgba(0,0,0,0.08);
   padding: 4px;
   border-radius: 4px;
@@ -42,7 +44,8 @@
 .nav a {
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 1em;
+  font-size: 1.05em;
+  font-weight: 500;
   transition: color 150ms;
 }
 .nav a:hover, .nav a.active { color: var(--accent); }
@@ -61,7 +64,7 @@
 
 .search-icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
   color: var(--text-tertiary);
   pointer-events: none;
   transition: color 150ms;
@@ -69,63 +72,150 @@
 }
 
 .search-box {
-  border: 1.5px solid var(--bg-muted);
-  border-radius: 999px;
-  padding: 7px 52px 7px 32px;
-  font-size: 0.88em;
+  border: 2px solid var(--accent-2);
+  border-radius: 8px;
+  padding: 10px 60px 10px 38px;
+  font-size: 0.95em;
   color: var(--text-secondary);
-  background: var(--bg-subtle);
-  width: 220px;
+  background: var(--accent-2-subtle);
+  width: 260px;
   outline: none;
-  transition: border-color 150ms, background-color 200ms;
+  transition: border-color 150ms, background-color 150ms, color 150ms;
   font-family: var(--font);
 }
-.search-box:focus { border-color: var(--accent); }
+.search-icon { color: var(--accent-2); }
+.search-box:hover {
+  border-color: var(--accent-2);
+  background: var(--accent-2-subtle);
+  color: var(--text);
+}
+.search-box:hover ~ .search-icon,
+.search-form:hover .search-icon { color: var(--accent-2); }
+.search-box:focus {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--text);
+}
 .search-box:focus + .search-kbd { opacity: 0; }
-.search-box:focus ~ .search-icon,
 .search-form:focus-within .search-icon { color: var(--accent); }
 .search-box:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .search-kbd {
   position: absolute;
   right: 10px;
-  font-size: 0.72em;
+  font-size: 0.75em;
   font-family: var(--font);
-  color: var(--text-tertiary);
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
+  color: var(--accent-2);
+  background: var(--accent-2-subtle);
+  border: 1px solid var(--accent-2);
   border-radius: 4px;
-  padding: 2px 5px;
+  padding: 3px 7px;
   pointer-events: none;
   transition: opacity 150ms;
-  opacity: 0.7;
+  opacity: 0.8;
   letter-spacing: 0;
 }
 
 .theme-toggle {
-  background: var(--bg-subtle);
-  border: 1.5px solid var(--bg-muted);
-  border-radius: 999px;
-  padding: 7px 14px;
+  background: var(--accent-2-subtle);
+  border: 2px solid var(--accent-2);
+  border-radius: 8px;
+  padding: 10px 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  color: var(--accent-2);
   transition: border-color 150ms, color 150ms, background-color 150ms;
   font-size: 1em;
   font-family: var(--font);
   white-space: nowrap;
 }
 .theme-toggle:hover {
-  color: var(--accent);
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  color: var(--accent-2-fg);
+}
+.theme-toggle:active {
+  background: var(--accent);
   border-color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 48px 40px;
+}
+
+/* --- Book detail page: force dark variables throughout --- */
+
+.book-detail-page {
+  background: #0a0908;
+  --bg: #0a0908;
+  --bg-subtle: #1a1410;
+  --bg-muted: #261e18;
+  --border: rgba(240,232,220,0.15);
+  --text: #f0e8dc;
+  --text-secondary: #c4a882;
+  --text-tertiary: #7a5c40;
+  --text-muted: #b89870;
+  --text-strong: #f5f0eb;
+  --accent: #f59e0b;
+  --accent-fg: #1c1917;
+  --accent-subtle: rgba(245,158,11,0.15);
+  --accent-subtle-border: rgba(245,158,11,0.35);
+  --accent-2: #38bdf8;
+  --accent-2-fg: #0a0908;
+  --accent-2-subtle: rgba(56,189,248,0.1);
+}
+
+/* --- Cover wall page: always-dark header --- */
+
+.cover-wall-page .header .logo { color: #fbbf24; }
+.cover-wall-page .header .nav a { color: rgba(240,232,220,0.4); }
+.cover-wall-page .header .nav a.active,
+.cover-wall-page .header .nav a:hover { color: #fbbf24; }
+.cover-wall-page .header .search-icon { color: #06b6d4; }
+.cover-wall-page .header .search-box {
+  background: transparent;
+  border-color: #06b6d4;
+  color: #06b6d4;
+}
+.cover-wall-page .header .search-box::placeholder { color: rgba(6,182,212,0.6); }
+.cover-wall-page .header .search-box:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+.cover-wall-page .header .search-box:hover::placeholder { color: rgba(255,255,255,0.6); }
+.cover-wall-page .header .search-form:hover .search-icon { color: #fff; }
+.cover-wall-page .header .search-box:focus {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
+}
+.cover-wall-page .header .search-box:focus::placeholder { color: rgba(10,9,8,0.5); }
+.cover-wall-page .header .search-form:focus-within .search-icon { color: #0a0908; }
+.cover-wall-page .header .search-kbd {
+  background: transparent;
+  border-color: #06b6d4;
+  color: #06b6d4;
+}
+.cover-wall-page .header .theme-toggle {
+  background: transparent;
+  border-color: #06b6d4;
+  color: #06b6d4;
+}
+.cover-wall-page .header .theme-toggle:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+.cover-wall-page .header .theme-toggle:active {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
 }
 
 /* --- Book detail page: transparent header that bleeds into hero --- */
@@ -136,56 +226,100 @@
   transition: background-color 300ms, border-color 300ms;
 }
 
-.book-detail-page .header .logo { color: #f59e0b; }
+.book-detail-page .header .logo { color: var(--hero-accent); }
 .book-detail-page .header .nav a { color: rgba(240,232,220,0.65); }
 .book-detail-page .header .nav a.active,
-.book-detail-page .header .nav a:hover { color: #f59e0b; }
+.book-detail-page .header .nav a:hover { color: var(--hero-accent); }
+.book-detail-page .header .search-icon { color: #06b6d4; }
 .book-detail-page .header .search-box {
-  border-color: rgba(240,232,220,0.2);
-  background: rgba(240,232,220,0.08);
+  border-color: #06b6d4;
+  background: transparent;
   color: rgba(240,232,220,0.8);
 }
-.book-detail-page .header .search-box::placeholder { color: rgba(240,232,220,0.4); }
-.book-detail-page .header .search-icon { color: rgba(240,232,220,0.4); }
+.book-detail-page .header .search-box::placeholder { color: rgba(6,182,212,0.6); }
+.book-detail-page .header .search-box:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+.book-detail-page .header .search-box:hover::placeholder { color: rgba(255,255,255,0.6); }
+.book-detail-page .header .search-form:hover .search-icon { color: #fff; }
+.book-detail-page .header .search-box:focus {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
+}
+.book-detail-page .header .search-box:focus::placeholder { color: rgba(10,9,8,0.5); }
+.book-detail-page .header .search-form:focus-within .search-icon { color: #0a0908; }
 .book-detail-page .header .search-kbd {
-  color: rgba(240,232,220,0.35);
-  background: rgba(240,232,220,0.08);
-  border-color: rgba(240,232,220,0.2);
+  color: #06b6d4;
+  background: transparent;
+  border-color: #06b6d4;
 }
 .book-detail-page .header .theme-toggle {
-  border-color: rgba(240,232,220,0.2);
-  background: rgba(240,232,220,0.08);
-  color: rgba(240,232,220,0.65);
+  border-color: #06b6d4;
+  background: transparent;
+  color: #06b6d4;
+}
+.book-detail-page .header .theme-toggle:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+.book-detail-page .header .theme-toggle:active {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
 }
 
 .book-detail-page .header.opaque {
-  background: var(--bg);
-  border-bottom-color: var(--border);
+  background: #0a0908;
+  border-bottom-color: rgba(240,232,220,0.1);
 }
-.book-detail-page .header.opaque .logo { color: var(--accent); }
-.book-detail-page .header.opaque .nav a { color: var(--text-secondary); }
+.book-detail-page .header.opaque .logo { color: #fbbf24; }
+.book-detail-page .header.opaque .nav a { color: rgba(240,232,220,0.45); }
 .book-detail-page .header.opaque .nav a.active,
-.book-detail-page .header.opaque .nav a:hover { color: var(--accent); }
+.book-detail-page .header.opaque .nav a:hover { color: #fbbf24; }
+.book-detail-page .header.opaque .search-icon { color: #06b6d4; }
 .book-detail-page .header.opaque .search-box {
-  border-color: var(--bg-muted);
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
+  border-color: #06b6d4;
+  background: transparent;
+  color: rgba(240,232,220,0.75);
 }
-.book-detail-page .header.opaque .search-box::placeholder { color: var(--text-tertiary); }
-.book-detail-page .header.opaque .search-icon { color: var(--text-tertiary); }
+.book-detail-page .header.opaque .search-box::placeholder { color: rgba(6,182,212,0.6); }
+.book-detail-page .header.opaque .search-box:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+.book-detail-page .header.opaque .search-box:focus {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
+}
 .book-detail-page .header.opaque .search-kbd {
-  color: var(--text-tertiary);
-  background: var(--bg-muted);
-  border-color: var(--border);
+  color: #06b6d4;
+  background: transparent;
+  border-color: #06b6d4;
 }
 .book-detail-page .header.opaque .theme-toggle {
-  border-color: var(--bg-muted);
-  background: var(--bg-subtle);
-  color: var(--text-secondary);
+  border-color: #06b6d4;
+  background: transparent;
+  color: #06b6d4;
+}
+.book-detail-page .header.opaque .theme-toggle:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+.book-detail-page .header.opaque .theme-toggle:active {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
 }
 
 @media (max-width: 768px) {
-  .header { padding: 0 16px; }
+  .header { padding: 0 16px; height: 64px; }
   .container { padding: 24px 20px; }
   .nav { display: none; }
   .search-box { width: 140px; padding-right: 32px; }

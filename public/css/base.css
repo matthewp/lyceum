@@ -7,6 +7,9 @@
   --accent-fg: #fff;
   --accent-subtle: rgba(180, 83, 9, 0.1);
   --accent-subtle-border: rgba(180, 83, 9, 0.28);
+  --accent-2: #0284c7;
+  --accent-2-fg: #fff;
+  --accent-2-subtle: rgba(2, 132, 199, 0.08);
 
   --bg: #fdf8f0;
   --bg-subtle: #f5ece0;
@@ -19,6 +22,8 @@
   --text-strong: #1a0e08;
   --shadow: rgba(44,24,16,0.08);
   --shadow-cover: rgba(44,24,16,0.25);
+  --hero-bg: #170e08;
+  --hero-accent: #f59e0b;
   --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
   --font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Mono", monospace;
@@ -29,6 +34,9 @@
   --accent-fg: #1c1917;
   --accent-subtle: rgba(245, 158, 11, 0.12);
   --accent-subtle-border: rgba(245, 158, 11, 0.3);
+  --accent-2: #38bdf8;
+  --accent-2-fg: #0a0908;
+  --accent-2-subtle: rgba(56, 189, 248, 0.1);
 
   --bg: #170e08;
   --bg-subtle: #221509;
@@ -41,6 +49,8 @@
   --text-strong: #f0e8dc;
   --shadow: rgba(0,0,0,0.3);
   --shadow-cover: rgba(0,0,0,0.6);
+  --hero-bg: #170e08;
+  --hero-accent: #f59e0b;
 }
 
 body {
@@ -59,8 +69,8 @@ a { color: inherit; }
   color: var(--accent);
   background: var(--accent-subtle);
   border: 1px solid var(--accent-subtle-border);
-  border-radius: 999px;
-  padding: 3px 12px;
+  border-radius: 6px;
+  padding: 3px 10px;
   text-decoration: none;
   transition: border-color 150ms, color 150ms, background-color 150ms;
   white-space: nowrap;
