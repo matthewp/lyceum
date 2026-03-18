@@ -18,7 +18,7 @@ import {
   verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
-import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSearchPage } from "./templates.ts";
+import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appSearchPage } from "./templates.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
 
@@ -457,6 +457,18 @@ export function startServer(config: ServerConfig) {
       }
       const { results, count } = await storage.searchBooks(q, { limit: 100 });
       sendHtml(res, appSearchPage(q, results, count));
+      return;
+    }
+
+    // Series page
+    const seriesMatch = path.match(/^\/app\/series\/(\d+)$/);
+    if (req.method === "GET" && seriesMatch) {
+      const seriesId = parseInt(seriesMatch[1], 10);
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      const perPage = 50;
+      const { books, total, seriesName } = await storage.listBooksBySeries(seriesId, { limit: perPage, offset: (page - 1) * perPage });
+      if (!seriesName) { json(res, { error: "Series not found" }, 404); return; }
+      sendHtml(res, appSeriesPage(seriesName, books, total, page, perPage));
       return;
     }
 

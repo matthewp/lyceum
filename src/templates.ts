@@ -305,7 +305,7 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     }
 
     const seriesLabel = book.series
-      ? html`<p class="detail-series-label">${book.series}${book.series_index != null ? ` · Book ${book.series_index}` : ""}</p>`
+      ? html`<p class="detail-series-label"><a href="/app/series/${book.series_id}" class="series-link">${book.series}${book.series_index != null ? ` · Book ${book.series_index}` : ""}</a></p>`
       : html``;
 
     const metaParts: SafeHTML[] = [];
@@ -565,6 +565,21 @@ export function appTagPage(tag: string, books: BookSummary[], total: number, pag
   </div>`;
 
   return appLayout(html`${tag} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
+}
+
+export function appSeriesPage(seriesName: string, books: BookSummary[], total: number, page: number, perPage: number): SafeHTML {
+  const basePath = `/app/series/${encodeURIComponent(seriesName)}`;
+  const body = html`
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">${seriesName} <span class="page-count">${total} books</span></h1>
+      ${viewToggleButtons()}
+    </div>
+    ${booksContainer(books)}
+    ${pagination(page, perPage, total, basePath)}
+  </div>`;
+
+  return appLayout(html`${seriesName} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
 }
 
 export function appSearchPage(query: string, books: BookSummary[], count: number): SafeHTML {

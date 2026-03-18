@@ -23,6 +23,7 @@ interface BookRow {
   pubdate: string | null;
   rating: number | null;
   comments: string | null;
+  series_id: number | null;
   series_name: string | null;
   series_index: number | null;
   has_cover: number;
@@ -150,6 +151,27 @@ export class LocalBackend implements StorageBackend {
       GROUP BY s.id
       ORDER BY s.name
     `).all() as CategoryItem[];
+  }
+
+  async listBooksBySeries(seriesId: number, opts: { limit?: number; offset?: number } = {}) {
+    const limit = opts.limit ?? 100;
+    const offset = opts.offset ?? 0;
+
+    const seriesRow = this.db.prepare("SELECT name FROM series WHERE id = ?").get(seriesId) as { name: string } | undefined;
+    const seriesName = seriesRow?.name ?? null;
+
+    const total = (this.db.prepare("SELECT COUNT(*) as count FROM books WHERE series_id = ?").get(seriesId) as { count: number }).count;
+
+    const rows = this.db.prepare(`
+      SELECT b.*, s.name as series_name
+      FROM books b
+      LEFT JOIN series s ON b.series_id = s.id
+      WHERE b.series_id = ?
+      ORDER BY b.series_index ASC, b.title ASC
+      LIMIT ? OFFSET ?
+    `).all(seriesId, limit, offset) as BookRow[];
+
+    return { books: rows.map(row => this.rowToSummary(row)), total, seriesName };
   }
 
   // --- Write operations ---
@@ -558,6 +580,7 @@ export class LocalBackend implements StorageBackend {
       formats: this.getFormats(row.id),
       tags: this.getTags(row.id),
       series: row.series_name,
+      series_id: row.series_id ?? null,
       series_index: row.series_index,
       has_cover: row.has_cover === 1,
     };
@@ -573,6 +596,7 @@ export class LocalBackend implements StorageBackend {
       pubdate: row.pubdate ?? "",
       last_modified: row.updated_at,
       series: row.series_name,
+      series_id: row.series_id ?? null,
       series_index: row.series_index,
       publisher: row.publisher,
       rating: row.rating,

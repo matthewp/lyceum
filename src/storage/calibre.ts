@@ -83,6 +83,7 @@ function formatBook(raw: any): BookSummary {
     formats: raw.formats ?? [],
     tags: raw.tags ?? [],
     series: raw.series ?? null,
+    series_id: null, // Calibre backend does not expose series IDs
     series_index: raw.series_index ?? null,
     has_cover: raw.has_cover ?? false,
   };
@@ -111,6 +112,7 @@ function formatBookDetail(raw: any, serverUrl: string): BookDetail {
     pubdate: raw.pubdate,
     last_modified: raw.last_modified,
     series: raw.series ?? null,
+    series_id: null,
     series_index: raw.series_index ?? null,
     publisher: raw.publisher ?? null,
     rating: raw.rating ?? null,
@@ -285,6 +287,11 @@ export class CalibreBackend implements StorageBackend {
     return { books: result.results, total: result.count };
   }
 
+  async listBooksBySeries(_seriesId: number, _opts: { limit?: number; offset?: number } = {}) {
+    // Calibre backend does not expose series IDs; unsupported
+    return { books: [], total: 0, seriesName: null };
+  }
+
   // --- Write operations ---
 
   async addBook(filename: string, data: Buffer): Promise<AddBookResult> {
@@ -300,6 +307,10 @@ export class CalibreBackend implements StorageBackend {
     const result = await res.json() as any;
     if (result.err) throw new Error(result.err);
     return result;
+  }
+
+  async addFormat(_bookId: number, _filename: string, _data: Buffer): Promise<void> {
+    throw new Error("addFormat is not supported by the Calibre backend");
   }
 
   async setMetadata(bookId: number, fields: Record<string, unknown>): Promise<void> {

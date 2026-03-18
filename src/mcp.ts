@@ -82,11 +82,26 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("list_series", {
-    description: "List all series in the library with book counts.",
+    description: "List all series in the library with book counts. Each result includes the series name and count. To get books in a series, use list_books_by_series with the series_id from a book's detail.",
   }, async () => {
     const series = await storage.listSeries();
     return {
       content: [{ type: "text", text: JSON.stringify(series, null, 2) }],
+    };
+  });
+
+  server.registerTool("list_books_by_series", {
+    description: "List all books in a series, ordered by series index. The series_id can be found in the series_id field of any book detail or book summary.",
+    inputSchema: {
+      series_id: z.coerce.number().describe("The series ID"),
+    },
+  }, async ({ series_id }) => {
+    const { books, total, seriesName } = await storage.listBooksBySeries(series_id, { limit: 200 });
+    if (!seriesName) {
+      return { content: [{ type: "text", text: "Series not found." }], isError: true };
+    }
+    return {
+      content: [{ type: "text", text: JSON.stringify({ series: seriesName, total, books }, null, 2) }],
     };
   });
 
