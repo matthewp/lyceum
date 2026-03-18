@@ -11,10 +11,13 @@ function scriptTags(urls: string[]): UnsafeHTML {
 
 const THEME_BLOCKING_SCRIPT = `<script>if(localStorage.getItem("theme")==="dark")document.documentElement.setAttribute("data-theme","dark")</script>`;
 
-function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML, opts: { scripts?: string[]; headModule?: string } = {}): SafeHTML {
+const GOOGLE_FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">`;
+
+function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML, opts: { scripts?: string[]; headModule?: string; bodyClass?: string } = {}): SafeHTML {
   const moduleTag = opts.headModule
     ? unsafeHTML(`<script type="module">${opts.headModule}</script>`)
     : unsafeHTML("");
+  const bodyClass = opts.bodyClass ? unsafeHTML(` class="${opts.bodyClass}"`) : unsafeHTML("");
 
   return html`<!DOCTYPE html>
 <html>
@@ -23,12 +26,13 @@ function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML,
   <title>${typeof title === "string" ? title : title}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" href="/public/favicon.png">
+  ${unsafeHTML(GOOGLE_FONTS)}
   ${cssLinks(stylesheets)}
   ${scriptTags(opts.scripts ?? [])}
   ${unsafeHTML(THEME_BLOCKING_SCRIPT)}
   ${moduleTag}
 </head>
-<body>
+<body${bodyClass}>
   ${body}
 </body>
 </html>`;
@@ -49,7 +53,9 @@ function header(activePage?: string): SafeHTML {
     </div>
     <div class="header-right">
       <form action="/app/search" method="GET" class="search-form">
+        ${unsafeHTML('<svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>')}
         <input type="text" name="q" class="search-box" placeholder="Search books...">
+        <kbd class="search-kbd">Ctrl K</kbd>
       </form>
       <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" id="theme-btn">&#9789;</button>
     </div>
@@ -62,15 +68,16 @@ window.toggleTheme=toggleTheme;
 if(localStorage.getItem("theme")==="dark")document.getElementById("theme-btn").textContent="\\u2600";
 addEventListener("load",()=>quicklink.listen());
 if("serviceWorker"in navigator)navigator.serviceWorker.register("/public/sw.js",{scope:"/"});
+document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();document.querySelector(".search-box")?.focus();}});
 `;
 
-function appLayout(title: SafeHTML | string, pageStyles: string[], body: SafeHTML, activePage?: string, extraModule?: string): SafeHTML {
+function appLayout(title: SafeHTML | string, pageStyles: string[], body: SafeHTML, activePage?: string, extraModule?: string, bodyClass?: string): SafeHTML {
   const stylesheets = ["/public/css/base.css", "/public/css/layout.css", ...pageStyles];
   const headModule = APP_MODULE + (extraModule ?? "");
   const page = html`
   ${header(activePage)}
   ${body}`;
-  return layout(title, stylesheets, page, { scripts: ["https://unpkg.com/quicklink"], headModule });
+  return layout(title, stylesheets, page, { scripts: ["https://unpkg.com/quicklink"], headModule, bodyClass });
 }
 
 // --- Landing page ---
@@ -157,40 +164,8 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
   const formats = (book.formats as string[]) ?? [];
   const languages = (book.languages as string[]) ?? [];
 
-  let seriesLine = html``;
-  if (book.series) {
-    const idx = book.series_index != null ? ` #${book.series_index}` : "";
-    seriesLine = html`<div class="meta-item"><span class="meta-label">Series</span><span class="meta-value">${book.series}${idx}</span></div>`;
-  }
-
-  let publisherLine = html``;
-  if (book.publisher) {
-    publisherLine = html`<div class="meta-item"><span class="meta-label">Publisher</span><span class="meta-value">${book.publisher}</span></div>`;
-  }
-
-  const pubdate = book.pubdate ? new Date(book.pubdate).getFullYear() : null;
-  let pubdateLine = html``;
-  if (pubdate && pubdate > 100) {
-    pubdateLine = html`<div class="meta-item"><span class="meta-label">Published</span><span class="meta-value">${pubdate}</span></div>`;
-  }
-
-  const languagesLine = languages.length
-    ? html`<div class="meta-item"><span class="meta-label">Language</span><span class="meta-value">${languages.join(", ")}</span></div>`
-    : html``;
-
-  const formatsLine = formats.length
-    ? html`<div class="meta-item"><span class="meta-label">Formats</span><span class="meta-value format">${formats.join("  ")}</span></div>`
-    : html``;
-
-  // App mode: separate image request (cacheable). MCP mode: inline base64 (no auth).
-  let coverImg: SafeHTML;
-  if (mode === "app" && book.has_cover) {
-    coverImg = html`<img class="detail-cover" src="/app/cover/${book.id}" alt="Cover" style="view-transition-name: cover-${book.id};">`;
-  } else if (mode === "mcp" && coverDataUrl) {
-    coverImg = html`<img class="detail-cover" src="${coverDataUrl}" alt="Cover">`;
-  } else {
-    coverImg = html`<div class="no-cover">No Cover</div>`;
-  }
+  const pubYear = book.pubdate ? new Date(book.pubdate).getFullYear() : null;
+  const pubYearValid = pubYear && pubYear > 100 ? pubYear : null;
 
   const tagsBlock = tags.length
     ? html`<div class="detail-tags">${unsafeHTML(tags.map((t: string) => {
@@ -204,19 +179,97 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     ? html`<div class="description">${unsafeHTML(description)}</div>`
     : html``;
 
+  if (mode === "app") {
+    // App mode: hero with blurred cover backdrop
+    let coverImg: SafeHTML;
+    if (book.has_cover) {
+      coverImg = html`<img class="detail-cover" src="/app/cover/${book.id}" alt="Cover" style="view-transition-name: cover-${book.id};">`;
+    } else {
+      coverImg = html`<div class="no-cover">No Cover</div>`;
+    }
+
+    const seriesLabel = book.series
+      ? html`<p class="detail-series-label">${book.series}${book.series_index != null ? ` · Book ${book.series_index}` : ""}</p>`
+      : html``;
+
+    const metaParts: SafeHTML[] = [];
+    if (pubYearValid) metaParts.push(html`<span>${pubYearValid}</span>`);
+    if (book.publisher) metaParts.push(html`<span>${book.publisher}</span>`);
+    if (languages.length) metaParts.push(html`<span>${languages.join(", ")}</span>`);
+    if (formats.length) metaParts.push(html`<span>${formats.join(" · ")}</span>`);
+    const metaRow = metaParts.length
+      ? html`<p class="detail-meta-row">${unsafeHTML(metaParts.map(p => p.toString()).join(""))}</p>`
+      : html``;
+
+    const ratingVal = typeof book.rating === "number" && book.rating > 0 ? book.rating : null;
+    const ratingBlock = ratingVal
+      ? (() => {
+          const stars = Math.round(ratingVal / 2);
+          return html`<p class="detail-rating">${"★".repeat(stars)}${"☆".repeat(5 - stars)}</p>`;
+        })()
+      : html``;
+
+    const heroStyle = book.has_cover
+      ? unsafeHTML(` style="--cover-url: url(/app/cover/${book.id})"`)
+      : unsafeHTML("");
+
+    const detailBody = html`
+  <div class="book-hero"${heroStyle}>
+    <div class="book-hero-content">
+      ${coverImg}
+      <div class="detail-hero-info">
+        ${seriesLabel}
+        <h1 class="detail-title" style="view-transition-name: title-${book.id};">${book.title}</h1>
+        <p class="detail-author">${authors}</p>
+        ${metaRow}
+        ${ratingBlock}
+      </div>
+    </div>
+  </div>
+  <div class="detail-body">
+    ${tagsBlock}
+    ${descriptionBlock}
+  </div>`;
+
+    const heroModule = `(function(){var h=document.querySelector('.header'),e=document.querySelector('.book-hero');if(!h||!e)return;new IntersectionObserver(function(entries){h.classList.toggle('opaque',!entries[0].isIntersecting);},{threshold:0,rootMargin:'-60px 0px 0px 0px'}).observe(e);})();`;
+    return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", heroModule, "book-detail-page");
+  }
+
+  // MCP mode: simple layout, no app header/nav
+  let coverImg: SafeHTML;
+  if (coverDataUrl) {
+    coverImg = html`<img class="detail-cover" src="${coverDataUrl}" alt="Cover">`;
+  } else {
+    coverImg = html`<div class="no-cover">No Cover</div>`;
+  }
+
+  let seriesLine = html``;
+  if (book.series) {
+    const idx = book.series_index != null ? ` #${book.series_index}` : "";
+    seriesLine = html`<div class="meta-item"><span class="meta-label">Series</span><span class="meta-value">${book.series}${idx}</span></div>`;
+  }
+  const publisherLine = book.publisher
+    ? html`<div class="meta-item"><span class="meta-label">Publisher</span><span class="meta-value">${book.publisher}</span></div>`
+    : html``;
+  const pubdateLine = pubYearValid
+    ? html`<div class="meta-item"><span class="meta-label">Published</span><span class="meta-value">${pubYearValid}</span></div>`
+    : html``;
+  const languagesLine = languages.length
+    ? html`<div class="meta-item"><span class="meta-label">Language</span><span class="meta-value">${languages.join(", ")}</span></div>`
+    : html``;
+  const formatsLine = formats.length
+    ? html`<div class="meta-item"><span class="meta-label">Formats</span><span class="meta-value format">${formats.join("  ")}</span></div>`
+    : html``;
+
   const detailBody = html`
-  <div class="detail">
-    <div class="detail-layout">
+  <div class="detail-simple">
+    <div class="detail-simple-layout">
       ${coverImg}
       <div class="detail-info">
-        <h1 class="detail-title" style="view-transition-name: title-${book.id};">${book.title}</h1>
+        <h1 class="detail-title">${book.title}</h1>
         <div class="detail-author">${authors}</div>
         <div class="detail-meta">
-          ${seriesLine}
-          ${publisherLine}
-          ${pubdateLine}
-          ${languagesLine}
-          ${formatsLine}
+          ${seriesLine}${publisherLine}${pubdateLine}${languagesLine}${formatsLine}
         </div>
         ${tagsBlock}
         ${descriptionBlock}
@@ -224,11 +277,6 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     </div>
   </div>`;
 
-  if (mode === "app") {
-    return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library");
-  }
-
-  // MCP mode: simple layout, no app header/nav
   return layout(html`${book.title} - Lyceum`, ["/public/css/base.css", "/public/css/book-detail.css"], detailBody);
 }
 
@@ -251,24 +299,6 @@ export function appLoginPage(opts?: { error?: string }): SafeHTML {
   return layout("Lyceum - Sign In", ["/public/css/base.css", "/public/css/forms.css"], body);
 }
 
-function bookGrid(books: BookSummary[]): SafeHTML {
-  const cards = books.map(book => {
-    const coverInner = book.has_cover
-      ? html`<img src="/app/cover/${book.id}" alt="" style="view-transition-name: cover-${book.id};">`
-      : html``;
-
-    return html`<a class="book-card" href="/app/book/${book.id}">
-      <div class="cover-wrap">${coverInner}</div>
-      <div class="book-title" style="view-transition-name: title-${book.id};">${book.title}</div>
-      <div class="book-author">${book.authors.join(", ")}</div>
-    </a>`;
-  });
-
-  return html`<div class="book-grid">
-    ${unsafeHTML(cards.map(c => c.toString()).join(""))}
-  </div>`;
-}
-
 function bookList(books: BookSummary[]): SafeHTML {
   const rows = books.map(book => {
     const tagPills = book.tags.map((t: string) =>
@@ -278,11 +308,22 @@ function bookList(books: BookSummary[]): SafeHTML {
       ? html`<img class="cover-small" src="/app/cover/${book.id}" alt="" style="view-transition-name: cover-${book.id};">`
       : html`<span class="no-cover-small"></span>`;
     const formats = book.formats.join(", ");
+    const seriesCell = book.series
+      ? html`<span class="row-series">${book.series}${book.series_index != null ? ` #${book.series_index}` : ""}</span>`
+      : html``;
+    const pubYear = book.pubdate ? new Date(book.pubdate).getFullYear() : null;
+    const yearCell = pubYear && pubYear > 100
+      ? html`<span class="row-year">${pubYear}</span>`
+      : html`<span class="row-year"></span>`;
 
     return html`<div class="book-row">
       ${coverCell}
-      <a class="row-title" href="/app/book/${book.id}" style="view-transition-name: title-${book.id};">${book.title}</a>
+      <div class="row-main">
+        <a class="row-title" href="/app/book/${book.id}" style="view-transition-name: title-${book.id};">${book.title}</a>
+        ${seriesCell}
+      </div>
       <span class="row-author">${book.authors.join(", ")}</span>
+      ${yearCell}
       <span class="row-tags">${unsafeHTML(tagPills.map((p: SafeHTML) => p.toString()).join(""))}</span>
       <span class="row-format">${formats}</span>
     </div>`;
@@ -293,6 +334,7 @@ function bookList(books: BookSummary[]): SafeHTML {
       <span class="col-cover"></span>
       <span class="col-title">Title</span>
       <span class="col-author">Author</span>
+      <span class="col-year">Year</span>
       <span class="col-tags">Tags</span>
       <span class="col-format">Format</span>
     </div>
@@ -315,31 +357,17 @@ function pagination(page: number, perPage: number, total: number, basePath: stri
   return html`<div class="pagination">${prev}<span class="page-info">Page ${page} of ${totalPages}</span>${next}</div>`;
 }
 
-const VIEW_TOGGLE_MODULE = `
-function showGrid(){var g=document.getElementById("grid-view");g.classList.add("active");g.style.display="block";document.getElementById("list-view").style.display="none";document.querySelectorAll(".view-toggle button").forEach((b,i)=>b.classList.toggle("active",i===0));localStorage.setItem("view","grid")}
-function showList(){var g=document.getElementById("grid-view");g.classList.remove("active");g.style.display="none";document.getElementById("list-view").style.display="block";document.querySelectorAll(".view-toggle button").forEach((b,i)=>b.classList.toggle("active",i===1));localStorage.setItem("view","list")}
-window.showGrid=showGrid;window.showList=showList;
-if(localStorage.getItem("view")==="grid")showGrid();
-`;
-
 export function appBooksPage(books: BookSummary[], total: number, page: number, perPage: number, basePath: string): SafeHTML {
   const body = html`
   <div class="container">
     <div class="page-header">
       <h1 class="page-title">Library <span class="page-count">${total} books</span></h1>
-      <div class="view-toggle">
-        <button onclick="showGrid()">Grid</button>
-        <button class="active" onclick="showList()">List</button>
-      </div>
-    </div>
-    <div id="grid-view">
-      ${bookGrid(books)}
     </div>
     ${bookList(books)}
     ${pagination(page, perPage, total, basePath)}
   </div>`;
 
-  return appLayout("Lyceum - Library", ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE);
+  return appLayout("Lyceum - Library", ["/public/css/book-table.css"], body, "library");
 }
 
 export function appTagPage(tag: string, books: BookSummary[], total: number, page: number, perPage: number): SafeHTML {
@@ -348,19 +376,12 @@ export function appTagPage(tag: string, books: BookSummary[], total: number, pag
   <div class="container">
     <div class="page-header">
       <h1 class="page-title">${tag} <span class="page-count">${total} books</span></h1>
-      <div class="view-toggle">
-        <button onclick="showGrid()">Grid</button>
-        <button class="active" onclick="showList()">List</button>
-      </div>
-    </div>
-    <div id="grid-view">
-      ${bookGrid(books)}
     </div>
     ${bookList(books)}
     ${pagination(page, perPage, total, tagBasePath)}
   </div>`;
 
-  return appLayout(html`${tag} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE);
+  return appLayout(html`${tag} - Lyceum`, ["/public/css/book-table.css"], body, "library");
 }
 
 export function appSearchPage(query: string, books: BookSummary[], count: number): SafeHTML {
@@ -369,11 +390,8 @@ export function appSearchPage(query: string, books: BookSummary[], count: number
     <div class="page-header">
       <h1 class="page-title">Results for &#8220;${query}&#8221; <span class="page-count">${count} books</span></h1>
     </div>
-    <div id="grid-view">
-      ${bookGrid(books)}
-    </div>
     ${bookList(books)}
   </div>`;
 
-  return appLayout(html`Search: ${query} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE);
+  return appLayout(html`Search: ${query} - Lyceum`, ["/public/css/book-table.css"], body, "library");
 }

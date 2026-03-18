@@ -3,33 +3,44 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #fff;
-  --bg-subtle: #fafafa;
-  --bg-muted: #f5f5f5;
-  --border: #000;
-  --text: #000;
-  --text-secondary: #737373;
-  --text-tertiary: #a3a3a3;
-  --text-muted: #525252;
-  --text-strong: #262626;
-  --shadow: rgba(0,0,0,0.06);
-  --shadow-cover: rgba(0,0,0,0.1);
+  --accent: #b45309;
+  --accent-fg: #fff;
+  --accent-subtle: rgba(180, 83, 9, 0.1);
+  --accent-subtle-border: rgba(180, 83, 9, 0.28);
+
+  --bg: #fdf8f0;
+  --bg-subtle: #f5ece0;
+  --bg-muted: #ede0ce;
+  --border: #2c1810;
+  --text: #2c1810;
+  --text-secondary: #7c5c48;
+  --text-tertiary: #b89880;
+  --text-muted: #5c3d2e;
+  --text-strong: #1a0e08;
+  --shadow: rgba(44,24,16,0.08);
+  --shadow-cover: rgba(44,24,16,0.25);
   --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
   --font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Mono", monospace;
 }
 
 [data-theme="dark"] {
-  --bg: #0a0a0a;
-  --bg-subtle: #111;
-  --bg-muted: #1a1a1a;
-  --border: #e5e5e5;
-  --text: #e5e5e5;
-  --text-secondary: #a3a3a3;
-  --text-tertiary: #525252;
-  --text-muted: #a3a3a3;
-  --text-strong: #d4d4d4;
+  --accent: #f59e0b;
+  --accent-fg: #1c1917;
+  --accent-subtle: rgba(245, 158, 11, 0.12);
+  --accent-subtle-border: rgba(245, 158, 11, 0.3);
+
+  --bg: #170e08;
+  --bg-subtle: #221509;
+  --bg-muted: #2e1d10;
+  --border: #e8ddd0;
+  --text: #e8ddd0;
+  --text-secondary: #c4a882;
+  --text-tertiary: #7a5c40;
+  --text-muted: #c4a882;
+  --text-strong: #f0e8dc;
   --shadow: rgba(0,0,0,0.3);
-  --shadow-cover: rgba(0,0,0,0.5);
+  --shadow-cover: rgba(0,0,0,0.6);
 }
 
 body {
@@ -45,8 +56,9 @@ a { color: inherit; }
 
 .tag {
   font-size: 0.8em;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-subtle-border);
   border-radius: 999px;
   padding: 3px 12px;
   text-decoration: none;
@@ -55,8 +67,9 @@ a { color: inherit; }
   display: inline-block;
 }
 .tag:hover {
-  background: var(--text);
-  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .format {
