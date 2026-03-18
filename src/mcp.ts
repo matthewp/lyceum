@@ -126,6 +126,20 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
     };
   });
 
+  server.registerTool("get_add_format_link", {
+    description: "Get a temporary link to upload an additional format (e.g. EPUB, MOBI, PDF) to an existing book. Returns a signed URL that opens a file upload form in the browser. The link expires in 10 minutes. IMPORTANT: Always present this URL as a markdown link like [Add Format](url) so the full URL is preserved in the href.",
+    inputSchema: {
+      id: z.coerce.number().describe("The book ID"),
+    },
+  }, async ({ id }) => {
+    const book = await storage.getBook(id);
+    const url = createSignedUrl(baseUrl, `/add-format/${id}`, 600);
+    const label = book ? `Add format to "${book.title}"` : "Add format";
+    return {
+      content: [{ type: "text", text: `[${label}](${url})` }],
+    };
+  });
+
   server.registerTool("set_metadata", {
     description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
     inputSchema: {

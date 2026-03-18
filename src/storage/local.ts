@@ -1,3 +1,4 @@
+import { extname } from "node:path";
 import type Database from "better-sqlite3";
 import { openDatabase, bookDirPath, bookFilePath, coverFilePath, insertFts, deleteFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries } from "./database.ts";
 import type { FileStore } from "./filestore.ts";
@@ -154,7 +155,7 @@ export class LocalBackend implements StorageBackend {
   // --- Write operations ---
 
   async addBook(filename: string, data: Buffer): Promise<AddBookResult> {
-    const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+    const ext = extname(filename).replace(/^\./, "").toLowerCase();
     const format = ext.toUpperCase();
 
     // Extract metadata from the file
@@ -229,6 +230,31 @@ export class LocalBackend implements StorageBackend {
 
     log.info({ id: bookId.id, title, authors, format }, "Book added");
     return { book_id: bookId.id, title, authors };
+  }
+
+  async addFormat(bookId: number, filename: string, data: Buffer): Promise<void> {
+    const row = this.db.prepare("SELECT path, has_cover FROM books WHERE id = ?").get(bookId) as { path: string; has_cover: number } | undefined;
+    if (!row) throw new Error(`Book ${bookId} not found`);
+
+    const ext = extname(filename).replace(/^\./, "").toLowerCase();
+    const format = ext.toUpperCase();
+
+    await this.files.put(bookFilePath(row.path, ext), data);
+    this.db.prepare(
+      "INSERT OR REPLACE INTO formats (book_id, format, filename, size) VALUES (?, ?, ?, ?)"
+    ).run(bookId, format, `book.${ext}`, data.byteLength);
+
+    // Extract and store cover only if the book doesn't already have one
+    if (!row.has_cover) {
+      const meta = await extractMetadata(data, filename);
+      if (meta.cover) {
+        await this.files.put(coverFilePath(row.path), meta.cover);
+        this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
+      }
+    }
+
+    this.db.prepare("UPDATE books SET updated_at = datetime('now') WHERE id = ?").run(bookId);
+    log.info({ bookId, format, size: data.byteLength }, "Format added");
   }
 
   async setMetadata(bookId: number, fields: Record<string, unknown>): Promise<void> {

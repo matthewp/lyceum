@@ -164,22 +164,80 @@ export function authorizePage(opts: {
   error?: string;
 }): SafeHTML {
   const errorMsg = opts.error ? html`<p class="error">${opts.error}</p>` : html``;
+  const clientName = opts.clientId || "An application";
 
   const body = html`
-  <div class="form-container">
-    <h1>Authorize</h1>
-    <p>An application is requesting access to your library.</p>
-    <form method="POST">
+  <div class="login-container">
+    <a href="/" class="login-logo">
+      <img src="/public/logo.webp" alt="" class="logo-img">
+      Lyceum
+    </a>
+    <h1 class="login-heading">Authorize</h1>
+    <p class="login-sub"><strong class="auth-client">${clientName}</strong> is requesting access to your library.</p>
+    <form method="POST" class="login-form">
       <input type="hidden" name="client_id" value="${opts.clientId}">
       <input type="hidden" name="redirect_uri" value="${opts.redirectUri}">
       <input type="hidden" name="state" value="${opts.state}">
       <input type="password" name="password" placeholder="Password" required autofocus>
-      <button type="submit">Authorize</button>
+      <button type="submit">Grant Access &rarr;</button>
       ${errorMsg}
     </form>
   </div>`;
 
-  return layout("Lyceum - Authorize", ["/public/css/base.css", "/public/css/forms.css"], body);
+  return layout("Lyceum - Authorize", ["/public/css/base.css", "/public/css/forms.css"], body, {
+    headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+    bodyClass: "login-page",
+  });
+}
+
+export function authorizeSuccessPage(redirectUrl: string): SafeHTML {
+  const body = html`
+  <div class="login-container">
+    <a href="/" class="login-logo">
+      <img src="/public/logo.webp" alt="" class="logo-img">
+      Lyceum
+    </a>
+    <h1 class="login-heading auth-success-heading">Access<br>Granted.</h1>
+    <p class="login-sub">You can close this window and return to your AI assistant.</p>
+  </div>`;
+
+  return layout("Lyceum - Authorized", ["/public/css/base.css", "/public/css/forms.css"], body, {
+    headModule: `document.documentElement.setAttribute("data-theme","dark");window.location.href=${JSON.stringify(redirectUrl)};`,
+    bodyClass: "login-page",
+  });
+}
+
+export function addFormatPage(bookTitle: string, opts?: { success?: string; error?: string }): SafeHTML {
+  let message = html``;
+  if (opts?.success) {
+    message = html`<p class="upload-success">${opts.success}</p>`;
+  } else if (opts?.error) {
+    message = html`<p class="error">${opts.error}</p>`;
+  }
+
+  const body = html`
+  <div class="mcp-brand-bar upload-brand-bar">
+    <a href="/" class="mcp-brand-logo">
+      <img src="/public/logo.webp" alt="" class="logo-img">
+      Lyceum
+    </a>
+  </div>
+  <div class="upload-container">
+    <h1 class="upload-heading">Add Format</h1>
+    <p class="upload-sub">Adding a new format to <strong style="color:#f0e8dc;">${bookTitle}</strong></p>
+    <form method="POST" enctype="multipart/form-data" class="upload-form">
+      <label class="file-label">
+        <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
+        <span class="file-hint">epub, pdf, mobi, azw3, cbz, txt&hellip;</span>
+      </label>
+      <button type="submit">Upload Format &rarr;</button>
+      ${message}
+    </form>
+  </div>`;
+
+  return layout("Lyceum - Add Format", ["/public/css/base.css", "/public/css/book-detail.css", "/public/css/forms.css"], body, {
+    headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+  });
 }
 
 export function uploadPage(opts?: { success?: string; error?: string }): SafeHTML {

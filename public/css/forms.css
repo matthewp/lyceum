@@ -56,6 +56,16 @@ body.login-page {
   line-height: 1.5;
 }
 
+.auth-client {
+  color: #06b6d4;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.auth-success-heading {
+  color: #fbbf24;
+}
+
 .login-form {
   width: 100%;
   display: flex;

@@ -57,6 +57,7 @@ export interface StorageBackend {
 
   // Write
   addBook(filename: string, data: Buffer): Promise<AddBookResult>;
+  addFormat(bookId: number, filename: string, data: Buffer): Promise<void>;
   setMetadata(bookId: number, fields: Record<string, unknown>): Promise<void>;
   setCover(bookId: number, imageUrl: string): Promise<void>;
   removeFormats(bookId: number, formats: string[]): Promise<void>;

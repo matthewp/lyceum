@@ -18,7 +18,7 @@ import {
   verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
-import { landingPage, authorizePage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSearchPage } from "./templates.ts";
+import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSearchPage } from "./templates.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
 
@@ -188,8 +188,7 @@ export function startServer(config: ServerConfig) {
       redirect.searchParams.set("code", code);
       if (state) redirect.searchParams.set("state", state);
 
-      res.writeHead(302, { Location: redirect.toString() });
-      res.end();
+      sendHtml(res, authorizeSuccessPage(redirect.toString()));
       return;
     }
   }
@@ -316,6 +315,50 @@ export function startServer(config: ServerConfig) {
       json(res, { error: e.message }, 500);
     }
     return;
+  }
+
+  const addFormatMatch = path.match(/^\/add-format\/(\d+)$/);
+  if (addFormatMatch) {
+    const bookId = parseInt(addFormatMatch[1], 10);
+    const expires = url.searchParams.get("expires") ?? "";
+    const sig = url.searchParams.get("sig") ?? "";
+
+    if (!verifySignedUrl(path, expires, sig)) {
+      json(res, { error: "Invalid or expired link" }, 403);
+      return;
+    }
+
+    const book = await storage.getBook(bookId);
+    if (!book) {
+      json(res, { error: "Book not found" }, 404);
+      return;
+    }
+
+    if (req.method === "GET") {
+      sendHtml(res, addFormatPage(book.title));
+      return;
+    }
+
+    if (req.method === "POST") {
+      const contentType = req.headers["content-type"] ?? "";
+      const body = await readBodyRaw(req);
+      const file = parseMultipart(body, contentType);
+
+      if (!file) {
+        sendHtml(res, addFormatPage(book.title, { error: "No file received." }), 400);
+        return;
+      }
+
+      try {
+        await storage.addFormat(bookId, file.filename, file.data);
+        const ext = extname(file.filename).replace(/^\./, "").toUpperCase() || "file";
+        sendHtml(res, addFormatPage(book.title, { success: `${ext} format added successfully.` }));
+      } catch (e: any) {
+        log.error({ err: e, bookId, filename: file.filename }, "Add format failed");
+        sendHtml(res, addFormatPage(book.title, { error: `Failed: ${e.message}` }), 500);
+      }
+      return;
+    }
   }
 
   if (path === "/upload") {
