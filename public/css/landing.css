@@ -105,18 +105,49 @@ body {
   margin-bottom: 24px;
 }
 
+.card-url-wrap {
+  position: relative;
+  margin-bottom: 36px;
+}
+
 .card-url {
   background: rgba(6,182,212,0.07);
   border: 2px solid #06b6d4;
   border-radius: 8px;
-  padding: 16px 20px;
-  margin-bottom: 36px;
+  padding: 16px 80px 16px 20px;
   overflow-x: auto;
 }
 .card-url code {
   font-family: var(--font-mono);
   font-size: 0.95em;
   color: #06b6d4;
+}
+
+.copy-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 1px solid #06b6d4;
+  border-radius: 5px;
+  color: #06b6d4;
+  font-family: var(--font);
+  font-size: 0.78em;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 150ms, color 150ms, border-color 150ms;
+  white-space: nowrap;
+}
+.copy-btn:hover {
+  background: #06b6d4;
+  color: #0a0908;
+}
+.copy-btn.copied {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
 }
 
 .landing-features {

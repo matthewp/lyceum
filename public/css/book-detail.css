@@ -143,61 +143,113 @@
 }
 .description :is(p, ul, ol) { margin-bottom: 14px; }
 
-/* --- MCP / simple mode --- */
+/* --- MCP view page --- */
+
+.mcp-view-page {
+  background: #0a0908;
+}
+
+.mcp-hero {
+  margin-top: 0;
+}
+
+/* --- MCP brand bar (sits inside the hero, floats over backdrop) --- */
+
+.mcp-brand-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 48px;
+  z-index: 3;
+}
+
+.mcp-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.5em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #fbbf24;
+  text-decoration: none;
+  transition: opacity 150ms;
+}
+.mcp-brand-logo:hover { opacity: 0.8; }
+.mcp-brand-logo .logo-img {
+  height: 30px;
+  background: rgba(255,255,255,0.1);
+  padding: 4px;
+  border-radius: 4px;
+}
 
 .detail-simple {
-  max-width: 800px;
+  max-width: 860px;
   margin: 0 auto;
-  padding: 64px 40px;
+  padding: 56px 40px 80px;
 }
 
 .detail-simple-layout {
   display: flex;
-  gap: 44px;
+  gap: 52px;
 }
 
 .detail-simple .detail-cover {
-  width: 200px;
-  min-width: 200px;
-  box-shadow: 0 4px 24px var(--shadow-cover);
+  width: 220px;
+  min-width: 220px;
+  border-radius: 4px;
+  box-shadow: 0 16px 56px rgba(0,0,0,0.7), 0 4px 12px rgba(0,0,0,0.4);
 }
 
 .detail-simple .no-cover {
-  width: 200px;
-  min-width: 200px;
-  height: 300px;
-  background: var(--bg-muted);
-  color: var(--text-tertiary);
+  width: 220px;
+  min-width: 220px;
+  height: 330px;
+  background: rgba(240,232,220,0.05);
+  color: rgba(240,232,220,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.9em;
 }
 
 .detail-simple .detail-title {
-  color: var(--text);
-  font-size: 2em;
-  margin-bottom: 8px;
+  font-family: var(--font-serif);
+  font-size: clamp(1.8em, 3vw, 2.6em);
+  font-weight: 800;
+  color: #f0e8dc;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
 }
 
 .detail-simple .detail-author {
-  color: var(--text-secondary);
-  margin-bottom: 28px;
+  font-size: 1.15em;
+  color: rgba(240,232,220,0.5);
+  margin-bottom: 32px;
 }
 
 .detail-meta {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 28px;
+  border-top: 1px solid rgba(240,232,220,0.08);
+  padding-top: 24px;
 }
-.meta-item { display: flex; gap: 12px; font-size: 0.95em; }
+.meta-item { display: flex; gap: 16px; font-size: 0.95em; align-items: baseline; }
 .meta-label {
-  color: var(--text-tertiary);
-  width: 84px;
+  color: rgba(240,232,220,0.28);
+  width: 88px;
   flex-shrink: 0;
   text-transform: uppercase;
-  font-size: 0.75em;
-  letter-spacing: 0.06em;
-  padding-top: 3px;
+  font-size: 0.72em;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  padding-top: 2px;
 }
-.meta-value { color: var(--text-strong); }
+.meta-value { color: rgba(240,232,220,0.8); }
 
 @media (max-width: 768px) {
   .book-hero-content {
@@ -212,7 +264,9 @@
   .detail-author, .detail-meta-row, .detail-rating { text-align: center; }
   .detail-meta-row { justify-content: center; }
   .detail-body { padding: 16px 20px 48px; }
-  .detail-simple { padding: 32px 20px; }
+  .mcp-brand-bar { padding: 20px; }
+  .detail-simple { padding: 32px 20px 64px; }
   .detail-simple-layout { flex-direction: column; align-items: center; }
-  .detail-simple .detail-title { font-size: 1.5em; }
+  .detail-simple .detail-title { font-size: 1.8em; text-align: center; }
+  .detail-simple .detail-author { text-align: center; }
 }

@@ -9,7 +9,7 @@ function scriptTags(urls: string[]): UnsafeHTML {
   return unsafeHTML(urls.map(u => `<script src="${u}" defer></script>`).join("\n  "));
 }
 
-const THEME_BLOCKING_SCRIPT = `<script>if(localStorage.getItem("theme")==="dark")document.documentElement.setAttribute("data-theme","dark")</script>`;
+const THEME_BLOCKING_SCRIPT = `<script>document.documentElement.setAttribute("data-theme","dark")</script>`;
 const VIEW_BLOCKING_SCRIPT = `<script>document.documentElement.setAttribute("data-view",localStorage.getItem("view")||"grid")</script>`;
 
 const GOOGLE_FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">`;
@@ -126,7 +126,10 @@ export function landingPage(baseUrl: string): SafeHTML {
       <div class="landing-card">
         <h2 class="card-heading">Connect your AI</h2>
         <p class="card-sub">Point any MCP-compatible assistant to your library.</p>
-        <pre class="card-url"><code>${baseUrl}/mcp</code></pre>
+        <div class="card-url-wrap">
+          <pre class="card-url"><code>${baseUrl}/mcp</code></pre>
+          <button class="copy-btn" data-copy="${baseUrl}/mcp" aria-label="Copy to clipboard">Copy</button>
+        </div>
         <ul class="landing-features">
           <li>Browse &amp; search your collection</li>
           <li>Download books &amp; send to e-readers</li>
@@ -137,8 +140,18 @@ export function landingPage(baseUrl: string): SafeHTML {
     </div>
   </div>`;
 
+  const landingModule = `
+document.documentElement.setAttribute("data-theme","dark");
+document.querySelectorAll(".copy-btn").forEach(function(btn){
+  btn.addEventListener("click",function(){
+    navigator.clipboard.writeText(btn.dataset.copy).then(function(){
+      btn.textContent="Copied!";btn.classList.add("copied");
+      setTimeout(function(){btn.textContent="Copy";btn.classList.remove("copied");},2000);
+    });
+  });
+});`;
   return layout("Lyceum", ["/public/css/base.css", "/public/css/landing.css"], body, {
-    headModule: `document.documentElement.setAttribute("data-theme","dark")`
+    headModule: landingModule
   });
 }
 
@@ -172,23 +185,34 @@ export function authorizePage(opts: {
 export function uploadPage(opts?: { success?: string; error?: string }): SafeHTML {
   let message = html``;
   if (opts?.success) {
-    message = html`<p class="success">${opts.success}</p>`;
+    message = html`<p class="upload-success">${opts.success}</p>`;
   } else if (opts?.error) {
     message = html`<p class="error">${opts.error}</p>`;
   }
 
   const body = html`
-  <div class="form-container">
-    <h1>Upload</h1>
-    <p>Upload a book to your library.</p>
-    <form method="POST" enctype="multipart/form-data">
-      <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
-      <button type="submit">Upload</button>
+  <div class="mcp-brand-bar upload-brand-bar">
+    <a href="/" class="mcp-brand-logo">
+      <img src="/public/logo.webp" alt="" class="logo-img">
+      Lyceum
+    </a>
+  </div>
+  <div class="upload-container">
+    <h1 class="upload-heading">Upload a Book</h1>
+    <p class="upload-sub">Add a new book to your library.</p>
+    <form method="POST" enctype="multipart/form-data" class="upload-form">
+      <label class="file-label">
+        <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
+        <span class="file-hint">epub, pdf, mobi, azw3, cbz, txt&hellip;</span>
+      </label>
+      <button type="submit">Upload &rarr;</button>
       ${message}
     </form>
   </div>`;
 
-  return appLayout("Lyceum - Upload Book", ["/public/css/forms.css"], body, "upload");
+  return layout("Lyceum - Upload Book", ["/public/css/base.css", "/public/css/book-detail.css", "/public/css/forms.css"], body, {
+    headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+  });
 }
 
 // --- Book detail page ---
@@ -270,7 +294,7 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", heroModule, "book-detail-page");
   }
 
-  // MCP mode: simple layout, no app header/nav
+  // MCP mode: full hero layout without the app header
   let coverImg: SafeHTML;
   if (coverDataUrl) {
     coverImg = html`<img class="detail-cover" src="${coverDataUrl}" alt="Cover">`;
@@ -278,41 +302,50 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     coverImg = html`<div class="no-cover">No Cover</div>`;
   }
 
-  let seriesLine = html``;
-  if (book.series) {
-    const idx = book.series_index != null ? ` #${book.series_index}` : "";
-    seriesLine = html`<div class="meta-item"><span class="meta-label">Series</span><span class="meta-value">${book.series}${idx}</span></div>`;
-  }
-  const publisherLine = book.publisher
-    ? html`<div class="meta-item"><span class="meta-label">Publisher</span><span class="meta-value">${book.publisher}</span></div>`
+  const seriesLabel = book.series
+    ? html`<p class="detail-series-label">${book.series}${book.series_index != null ? ` · Book ${book.series_index}` : ""}</p>`
     : html``;
-  const pubdateLine = pubYearValid
-    ? html`<div class="meta-item"><span class="meta-label">Published</span><span class="meta-value">${pubYearValid}</span></div>`
+
+  const metaParts: SafeHTML[] = [];
+  if (pubYearValid) metaParts.push(html`<span>${pubYearValid}</span>`);
+  if (book.publisher) metaParts.push(html`<span>${book.publisher}</span>`);
+  if (languages.length) metaParts.push(html`<span>${languages.join(", ")}</span>`);
+  if (formats.length) metaParts.push(html`<span>${formats.join(" · ")}</span>`);
+  const metaRow = metaParts.length
+    ? html`<p class="detail-meta-row">${unsafeHTML(metaParts.map(p => p.toString()).join(""))}</p>`
     : html``;
-  const languagesLine = languages.length
-    ? html`<div class="meta-item"><span class="meta-label">Language</span><span class="meta-value">${languages.join(", ")}</span></div>`
-    : html``;
-  const formatsLine = formats.length
-    ? html`<div class="meta-item"><span class="meta-label">Formats</span><span class="meta-value format">${formats.join("  ")}</span></div>`
-    : html``;
+
+  const heroStyle = coverDataUrl
+    ? unsafeHTML(` style="--cover-url: url('${coverDataUrl}')"`)
+    : unsafeHTML("");
 
   const detailBody = html`
-  <div class="detail-simple">
-    <div class="detail-simple-layout">
+  <div class="book-hero mcp-hero"${heroStyle}>
+    <div class="mcp-brand-bar">
+      <a href="/" class="mcp-brand-logo">
+        <img src="/public/logo.webp" alt="" class="logo-img">
+        Lyceum
+      </a>
+    </div>
+    <div class="book-hero-content">
       ${coverImg}
-      <div class="detail-info">
+      <div class="detail-hero-info">
+        ${seriesLabel}
         <h1 class="detail-title">${book.title}</h1>
-        <div class="detail-author">${authors}</div>
-        <div class="detail-meta">
-          ${seriesLine}${publisherLine}${pubdateLine}${languagesLine}${formatsLine}
-        </div>
-        ${tagsBlock}
-        ${descriptionBlock}
+        <p class="detail-author">${authors}</p>
+        ${metaRow}
       </div>
     </div>
+  </div>
+  <div class="detail-body">
+    ${tagsBlock}
+    ${descriptionBlock}
   </div>`;
 
-  return layout(html`${book.title} - Lyceum`, ["/public/css/base.css", "/public/css/book-detail.css"], detailBody);
+  return layout(html`${book.title} - Lyceum`, ["/public/css/base.css", "/public/css/book-detail.css"], detailBody, {
+    headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+    bodyClass: "book-detail-page mcp-view-page"
+  });
 }
 
 // --- App pages ---
@@ -337,6 +370,7 @@ export function appLoginPage(opts?: { error?: string }): SafeHTML {
 
   return layout("Lyceum - Sign In", ["/public/css/base.css", "/public/css/forms.css"], body, {
     headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+    bodyClass: "login-page",
   });
 }
 

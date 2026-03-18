@@ -307,6 +307,8 @@
   .header { padding: 0 16px; height: 64px; }
   .container { padding: 24px 20px; }
   .nav { display: none; }
-  .search-box { width: 140px; padding-right: 32px; }
+  .header-right { flex: 1; justify-content: flex-end; }
+  .search-form { flex: 1; max-width: 320px; }
+  .search-box { width: 100%; padding-right: 32px; }
   .search-kbd { display: none; }
 }
