@@ -297,7 +297,6 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     : html``;
 
   if (mode === "app") {
-    // App mode: hero with blurred cover backdrop
     let coverImg: SafeHTML;
     if (book.has_cover) {
       coverImg = html`<img class="detail-cover" src="/app/cover/${book.id}" alt="Cover" style="view-transition-name: cover-${book.id};">`;
@@ -313,7 +312,6 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     if (pubYearValid) metaParts.push(html`<span>${pubYearValid}</span>`);
     if (book.publisher) metaParts.push(html`<span>${book.publisher}</span>`);
     if (languages.length) metaParts.push(html`<span>${languages.join(", ")}</span>`);
-    if (formats.length) metaParts.push(html`<span>${formats.join(" · ")}</span>`);
     const metaRow = metaParts.length
       ? html`<p class="detail-meta-row">${unsafeHTML(metaParts.map(p => p.toString()).join(""))}</p>`
       : html``;
@@ -326,33 +324,37 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
         })()
       : html``;
 
-    const heroStyle = book.has_cover
+    const backdropStyle = book.has_cover
       ? unsafeHTML(` style="--cover-url: url(/app/cover/${book.id})"`)
       : unsafeHTML("");
 
+    const formatsBlock = formats.length
+      ? html`<div class="detail-formats">${unsafeHTML(formats.map((f: string) => `<span class="format-badge">${f}</span>`).join(""))}</div>`
+      : html``;
+
     const detailBody = html`
-  <div class="book-hero"${heroStyle}>
-    <div class="book-hero-content">
+  <div class="book-backdrop"${backdropStyle}></div>
+  <div class="detail-layout">
+    <div class="detail-col-left">
       ${coverImg}
-      <div class="detail-hero-info">
-        ${seriesLabel}
-        <h1 class="detail-title" style="view-transition-name: title-${book.id};">${book.title}</h1>
-        <p class="detail-author">${authors}</p>
-        ${metaRow}
-        ${ratingBlock}
-      </div>
+      ${formatsBlock}
     </div>
-  </div>
-  <div class="detail-body">
-    ${tagsBlock}
-    ${descriptionBlock}
+    <div class="detail-col-right">
+      ${seriesLabel}
+      <h1 class="detail-title" style="view-transition-name: title-${book.id};">${book.title}</h1>
+      <p class="detail-author">${authors}</p>
+      ${metaRow}
+      ${tagsBlock}
+      ${ratingBlock}
+      ${descriptionBlock}
+    </div>
   </div>`;
 
-    const heroModule = `(function(){var h=document.querySelector('.header'),e=document.querySelector('.book-hero');if(!h||!e)return;new IntersectionObserver(function(entries){h.classList.toggle('opaque',!entries[0].isIntersecting);},{threshold:0,rootMargin:'-72px 0px 0px 0px'}).observe(e);})();`;
-    return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", heroModule, "book-detail-page");
+    const scrollModule = `(function(){var h=document.querySelector('.header');if(!h)return;function u(){h.classList.toggle('opaque',window.scrollY>30);}window.addEventListener('scroll',u,{passive:true});u();})();`;
+    return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", scrollModule, "book-detail-page");
   }
 
-  // MCP mode: full hero layout without the app header
+  // MCP mode: same two-column layout, brand bar instead of app header
   let coverImg: SafeHTML;
   if (coverDataUrl) {
     coverImg = html`<img class="detail-cover" src="${coverDataUrl}" alt="Cover">`;
@@ -368,36 +370,39 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
   if (pubYearValid) metaParts.push(html`<span>${pubYearValid}</span>`);
   if (book.publisher) metaParts.push(html`<span>${book.publisher}</span>`);
   if (languages.length) metaParts.push(html`<span>${languages.join(", ")}</span>`);
-  if (formats.length) metaParts.push(html`<span>${formats.join(" · ")}</span>`);
   const metaRow = metaParts.length
     ? html`<p class="detail-meta-row">${unsafeHTML(metaParts.map(p => p.toString()).join(""))}</p>`
     : html``;
 
-  const heroStyle = coverDataUrl
+  const formatsBlock = formats.length
+    ? html`<div class="detail-formats">${unsafeHTML(formats.map((f: string) => `<span class="format-badge">${f}</span>`).join(""))}</div>`
+    : html``;
+
+  const backdropStyle = coverDataUrl
     ? unsafeHTML(` style="--cover-url: url('${coverDataUrl}')"`)
     : unsafeHTML("");
 
   const detailBody = html`
-  <div class="book-hero mcp-hero"${heroStyle}>
-    <div class="mcp-brand-bar">
-      <a href="/" class="mcp-brand-logo">
-        <img src="/public/logo.webp" alt="" class="logo-img">
-        Lyceum
-      </a>
-    </div>
-    <div class="book-hero-content">
-      ${coverImg}
-      <div class="detail-hero-info">
-        ${seriesLabel}
-        <h1 class="detail-title">${book.title}</h1>
-        <p class="detail-author">${authors}</p>
-        ${metaRow}
-      </div>
-    </div>
+  <div class="book-backdrop"${backdropStyle}></div>
+  <div class="mcp-brand-bar">
+    <a href="/" class="mcp-brand-logo">
+      <img src="/public/logo.webp" alt="" class="logo-img">
+      Lyceum
+    </a>
   </div>
-  <div class="detail-body">
-    ${tagsBlock}
-    ${descriptionBlock}
+  <div class="detail-layout mcp-detail-layout">
+    <div class="detail-col-left">
+      ${coverImg}
+      ${formatsBlock}
+    </div>
+    <div class="detail-col-right">
+      ${seriesLabel}
+      <h1 class="detail-title">${book.title}</h1>
+      <p class="detail-author">${authors}</p>
+      ${metaRow}
+      ${tagsBlock}
+      ${descriptionBlock}
+    </div>
   </div>`;
 
   return layout(html`${book.title} - Lyceum`, ["/public/css/base.css", "/public/css/book-detail.css"], detailBody, {

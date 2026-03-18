@@ -1,55 +1,66 @@
-/* --- Book Hero --- */
+/* --- Full-page blurred cover backdrop (app mode) --- */
 
-.book-hero {
-  position: relative;
+.book-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   overflow: hidden;
-  margin-top: -72px;
+  pointer-events: none;
 }
 
-.book-hero::before {
+.book-backdrop::before {
   content: '';
   position: absolute;
   inset: -40px;
-  background-color: var(--hero-bg);
+  background-color: #0a0908;
   background-image: var(--cover-url, none);
   background-size: cover;
   background-position: center;
-  filter: blur(52px) brightness(0.28) saturate(2);
-  z-index: 0;
+  filter: blur(52px) brightness(0.22) saturate(2.5);
 }
 
-.book-hero::after {
+.book-backdrop::after {
   content: '';
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  height: 160px;
-  background: linear-gradient(to bottom, transparent, var(--bg));
-  z-index: 1;
+  height: 40%;
+  background: linear-gradient(to bottom, transparent, #0a0908);
 }
 
-.book-hero-content {
+/* --- Two-column detail layout --- */
+
+.detail-layout {
   position: relative;
-  z-index: 2;
+  z-index: 1;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 160px 48px 120px;
-  display: flex;
+  padding: 48px 48px 100px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
   gap: 64px;
-  align-items: flex-start;
+  align-items: start;
+}
+
+.detail-col-left {
+  position: sticky;
+  top: 96px;
+}
+
+.detail-col-right {
+  padding-top: 8px;
+  min-width: 0;
 }
 
 .detail-cover {
-  width: 300px;
-  min-width: 300px;
+  width: 100%;
   border-radius: 4px;
   box-shadow: 0 24px 80px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.4);
-  align-self: flex-start;
+  display: block;
 }
 
 .no-cover {
-  width: 300px;
-  min-width: 300px;
-  height: 450px;
+  width: 100%;
+  aspect-ratio: 2/3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,13 +68,24 @@
   color: rgba(245,240,235,0.3);
   font-size: 0.9em;
   border-radius: 4px;
-  align-self: flex-start;
 }
 
-.detail-hero-info {
-  flex: 1;
-  min-width: 0;
-  padding-top: 16px;
+.detail-formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.format-badge {
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 5px 12px;
+  border: 1.5px solid rgba(240,232,220,0.18);
+  border-radius: 4px;
+  color: rgba(240,232,220,0.45);
+  text-transform: uppercase;
 }
 
 .detail-series-label {
@@ -71,30 +93,30 @@
   color: #06b6d4;
   font-weight: 700;
   letter-spacing: 0.1em;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   text-transform: uppercase;
 }
 
 .detail-title {
   font-family: var(--font-serif);
-  font-size: clamp(2.5rem, 4.5vw, 5rem);
+  font-size: clamp(2rem, 3.5vw, 4rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.02em;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   color: #f5f0eb;
 }
 
 .detail-author {
-  font-size: 1.4em;
-  color: rgba(245,240,235,0.65);
-  margin-bottom: 28px;
+  font-size: 1.25em;
+  color: rgba(245,240,235,0.6);
+  margin-bottom: 20px;
   font-weight: 400;
 }
 
 .detail-meta-row {
-  font-size: 1em;
-  color: rgba(245,240,235,0.45);
+  font-size: 0.95em;
+  color: rgba(245,240,235,0.4);
   display: flex;
   flex-wrap: wrap;
   gap: 4px 0;
@@ -107,41 +129,35 @@
   opacity: 0.4;
 }
 
-.detail-rating {
-  font-size: 1.5em;
-  color: #f59e0b;
-  letter-spacing: 4px;
-}
-
-/* --- Detail Body (below hero) --- */
-
-.detail-body {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 16px 48px 80px;
-}
-
 .detail-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 48px;
+  margin-bottom: 24px;
 }
 
-.detail-body .tag {
-  font-size: 0.95em;
-  padding: 6px 16px;
+.detail-col-right .tag {
+  font-size: 0.9em;
+  padding: 5px 14px;
+}
+
+.detail-rating {
+  font-size: 1.3em;
+  color: #f59e0b;
+  letter-spacing: 4px;
+  margin-bottom: 20px;
 }
 
 .description {
-  border-top: 1px solid var(--border);
-  padding-top: 36px;
-  font-size: 1.15em;
+  border-top: 1px solid rgba(245,240,235,0.08);
+  padding-top: 28px;
+  margin-top: 8px;
+  font-size: 1.1em;
   line-height: 1.85;
-  color: var(--text-muted);
-  max-width: 720px;
+  color: rgba(245,240,235,0.65);
 }
 .description :is(p, ul, ol) { margin-bottom: 14px; }
+
 
 /* --- MCP view page --- */
 
@@ -149,19 +165,20 @@
   background: #0a0908;
 }
 
-.mcp-hero {
-  margin-top: 0;
+/* Brand bar sits at top of page, above the layout */
+.mcp-brand-bar {
+  position: relative;
+  z-index: 2;
+  padding: 32px 48px;
 }
 
-/* --- MCP brand bar (sits inside the hero, floats over backdrop) --- */
+/* MCP layout: no app header, so sticky top is brand bar height */
+.mcp-detail-layout {
+  padding-top: 48px;
+}
 
-.mcp-brand-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: 24px 48px;
-  z-index: 3;
+.mcp-detail-layout .detail-col-left {
+  top: 48px;
 }
 
 .mcp-brand-logo {
@@ -193,6 +210,7 @@
   display: flex;
   gap: 52px;
 }
+
 
 .detail-simple .detail-cover {
   width: 220px;
@@ -252,17 +270,31 @@
 .meta-value { color: rgba(240,232,220,0.8); }
 
 @media (max-width: 768px) {
+  /* App mode: stack to single column */
+  .detail-layout {
+    grid-template-columns: 1fr;
+    padding: 24px 20px 64px;
+    gap: 32px;
+  }
+  .detail-col-left {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .detail-cover { width: 180px; }
+  .no-cover { width: 180px; }
+  .detail-formats { justify-content: center; }
+  .detail-col-right { padding-top: 0; }
+  .detail-title { font-size: 2rem; }
+
+  /* MCP mode */
   .book-hero-content {
     flex-direction: column;
     align-items: center;
     padding: 120px 20px 100px;
     gap: 32px;
   }
-  .detail-cover { width: 200px; min-width: 200px; }
-  .no-cover { width: 200px; min-width: 200px; height: 300px; }
-  .detail-title { font-size: 2.2rem; text-align: center; }
-  .detail-author, .detail-meta-row, .detail-rating { text-align: center; }
-  .detail-meta-row { justify-content: center; }
   .detail-body { padding: 16px 20px 48px; }
   .mcp-brand-bar { padding: 20px; }
   .detail-simple { padding: 32px 20px 64px; }
