@@ -217,7 +217,10 @@ html[data-view="table"] .cover-wall { display: none; }
   font-style: italic;
   display: block;
   margin-top: 3px;
+  text-decoration: none;
+  transition: color 150ms;
 }
+.book-row .row-series:hover { color: #ec4899; }
 
 .book-row .col-author { color: rgba(240,232,220,0.45); font-size: 0.9em; white-space: nowrap; }
 .book-row .col-year { color: rgba(240,232,220,0.3); font-size: 0.85em; font-family: var(--font-mono); text-align: right; white-space: nowrap; }

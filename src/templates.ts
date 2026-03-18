@@ -487,8 +487,8 @@ function bookList(books: BookSummary[]): SafeHTML {
       ? html`<img class="cover-small" src="/app/cover/${book.id}" alt="" style="view-transition-name: cover-${book.id};">`
       : html`<span class="no-cover-small"></span>`;
     const formats = book.formats.join(" · ");
-    const seriesCell = book.series
-      ? html`<span class="row-series">${book.series}${book.series_index != null ? ` #${book.series_index}` : ""}</span>`
+    const seriesCell = book.series && book.series_id
+      ? html`<a class="row-series" href="/app/series/${book.series_id}">${book.series}${book.series_index != null ? ` #${book.series_index}` : ""}</a>`
       : html``;
     const pubYear = book.pubdate ? new Date(book.pubdate).getFullYear() : null;
     const yearStr = pubYear && pubYear > 100 ? String(pubYear) : "";
