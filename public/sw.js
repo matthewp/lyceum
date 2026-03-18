@@ -1,5 +1,4 @@
-const COVER_CACHE = "covers-v1";
-const SWR_CACHE = "swr-v1";
+const SWR_CACHE = "swr-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
@@ -8,7 +7,7 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   const path = url.pathname;
 
-  // Skip: non-GET, login, MCP, signed URLs, POST
+  // Skip: non-GET, login, MCP, signed URLs
   if (e.request.method !== "GET") return;
   if (path === "/app/login") return;
   if (path.startsWith("/mcp")) return;
@@ -16,27 +15,12 @@ self.addEventListener("fetch", (e) => {
   if (path.startsWith("/download/")) return;
   if (path.startsWith("/upload")) return;
 
-  // Cache-first: covers never change
-  if (path.startsWith("/app/cover/")) {
-    e.respondWith(cacheFirst(e.request, COVER_CACHE));
-    return;
-  }
-
-  // SWR: app pages and static assets
+  // SWR: app pages, covers, and static assets
   if (path.startsWith("/app") || path.startsWith("/public/")) {
     e.respondWith(staleWhileRevalidate(e.request, SWR_CACHE));
     return;
   }
 });
-
-async function cacheFirst(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  const response = await fetch(request);
-  if (response.ok) cache.put(request, response.clone());
-  return response;
-}
 
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
