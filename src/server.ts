@@ -378,6 +378,15 @@ export function startServer(config: ServerConfig) {
     }
   }
 
+  if (path === "/app/logout" && req.method === "POST") {
+    res.writeHead(302, {
+      Location: "/app/login",
+      "Set-Cookie": "session=; Path=/app; HttpOnly; SameSite=Lax; Max-Age=0",
+    });
+    res.end();
+    return;
+  }
+
   // --- App: Protected routes ---
   if (path.startsWith("/app")) {
     if (!verifySessionCookie(req.headers.cookie)) {

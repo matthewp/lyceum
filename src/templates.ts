@@ -55,22 +55,34 @@ function header(activePage?: string): SafeHTML {
     </div>
     <div class="header-right">
       <form action="/app/search" method="GET" class="search-form">
-        ${unsafeHTML('<svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>')}
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" name="q" class="search-box" placeholder="Search books...">
         <kbd class="search-kbd">Ctrl K</kbd>
       </form>
-      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" id="theme-btn">&#9789;</button>
+      <div class="user-menu">
+        <button class="user-btn" id="user-btn" aria-label="User menu" aria-expanded="false">
+          <svg class="user-book-icon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </button>
+        <div class="user-dropdown" id="user-dropdown" hidden>
+          <form method="POST" action="/app/logout">
+            <button type="submit" class="dropdown-item">Sign out</button>
+          </form>
+        </div>
+      </div>
     </div>
   </header>`;
 }
 
 const APP_MODULE = `
-function toggleTheme(){var h=document.documentElement,d=h.getAttribute("data-theme")==="dark";h.setAttribute("data-theme",d?"":"dark");document.getElementById("theme-btn").textContent=d?"\\u263D":"\\u2600";localStorage.setItem("theme",d?"light":"dark")}
-window.toggleTheme=toggleTheme;
-if(localStorage.getItem("theme")==="dark")document.getElementById("theme-btn").textContent="\\u2600";
 addEventListener("load",()=>quicklink.listen());
 if("serviceWorker"in navigator)navigator.serviceWorker.register("/public/sw.js",{scope:"/"});
 document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();document.querySelector(".search-box")?.focus();}});
+(function(){
+  var btn=document.getElementById("user-btn"),drop=document.getElementById("user-dropdown");
+  if(!btn||!drop)return;
+  btn.addEventListener("click",function(e){e.stopPropagation();var open=drop.hidden;drop.hidden=!open;btn.setAttribute("aria-expanded",String(open));});
+  document.addEventListener("click",function(){drop.hidden=true;btn.setAttribute("aria-expanded","false");});
+})();
 `;
 
 const VIEW_TOGGLE_MODULE = `
@@ -101,26 +113,33 @@ function appLayout(title: SafeHTML | string, pageStyles: string[], body: SafeHTM
 export function landingPage(baseUrl: string): SafeHTML {
   const body = html`
   <div class="landing">
-    <img src="/public/logo.webp" alt="Lyceum" class="logo-img">
-    <h1>Lyceum</h1>
-    <p class="tagline">An <span class="mcp-badge">MCP</span> bridge to your ebook library.</p>
-    <p>Lyceum lets AI assistants browse, search, and manage your ebook collection through the Model Context Protocol.</p>
-    <ul class="features">
-      <li>Search and browse your library</li>
-      <li>Download and upload books</li>
-      <li>Edit metadata and covers</li>
-      <li>Convert between formats</li>
-      <li>Send books to e-readers</li>
-    </ul>
-    <h2>Connect</h2>
-    <p>Point your MCP-compatible AI tool to:</p>
-    <pre><code>${baseUrl}/mcp</code></pre>
-    <footer>
-      <a href="https://github.com/matthewp/lyceum">${unsafeHTML('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>')} GitHub</a>
-    </footer>
+    <div class="landing-left">
+      <a href="/app" class="landing-logo">
+        <img src="/public/logo.webp" alt="" class="landing-logo-img">
+        Lyceum
+      </a>
+      <h1 class="landing-title">Your<br>library.</h1>
+      <p class="landing-tagline">Browse, search, and manage your ebook collection. AI-ready via MCP.</p>
+      <a href="/app" class="landing-cta">Open Library &rarr;</a>
+    </div>
+    <div class="landing-right">
+      <div class="landing-card">
+        <h2 class="card-heading">Connect your AI</h2>
+        <p class="card-sub">Point any MCP-compatible assistant to your library.</p>
+        <pre class="card-url"><code>${baseUrl}/mcp</code></pre>
+        <ul class="landing-features">
+          <li>Browse &amp; search your collection</li>
+          <li>Download books &amp; send to e-readers</li>
+          <li>Edit metadata and covers</li>
+          <li>Convert between formats</li>
+        </ul>
+      </div>
+    </div>
   </div>`;
 
-  return layout("Lyceum", ["/public/css/base.css", "/public/css/landing.css"], body);
+  return layout("Lyceum", ["/public/css/base.css", "/public/css/landing.css"], body, {
+    headModule: `document.documentElement.setAttribute("data-theme","dark")`
+  });
 }
 
 // --- Auth pages ---
@@ -302,17 +321,23 @@ export function appLoginPage(opts?: { error?: string }): SafeHTML {
   const errorMsg = opts?.error ? html`<p class="error">${opts.error}</p>` : html``;
 
   const body = html`
-  <div class="form-container">
-    <h1>Sign In</h1>
-    <p>Enter your password to access your library.</p>
-    <form method="POST">
+  <div class="login-container">
+    <a href="/" class="login-logo">
+      <img src="/public/logo.webp" alt="" class="logo-img">
+      Lyceum
+    </a>
+    <h1 class="login-heading">Sign In</h1>
+    <p class="login-sub">Enter your password to access your library.</p>
+    <form method="POST" class="login-form">
       <input type="password" name="password" placeholder="Password" required autofocus>
       <button type="submit">Sign In</button>
       ${errorMsg}
     </form>
   </div>`;
 
-  return layout("Lyceum - Sign In", ["/public/css/base.css", "/public/css/forms.css"], body);
+  return layout("Lyceum - Sign In", ["/public/css/base.css", "/public/css/forms.css"], body, {
+    headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+  });
 }
 
 function viewToggleButtons(): SafeHTML {
@@ -333,8 +358,8 @@ function coverWall(books: BookSummary[]): SafeHTML {
   const cards = books.map(book => {
     if (book.has_cover) {
       return html`<a class="book-card" href="/app/book/${book.id}">
-        <div class="cover-wrap">
-          <img src="/app/cover/${book.id}" alt="" style="view-transition-name: cover-${book.id};">
+        <div class="cover-wrap" style="view-transition-name: cover-${book.id};">
+          <img src="/app/cover/${book.id}" alt="">
           <div class="cover-overlay">
             <span class="cover-title" style="view-transition-name: title-${book.id};">${book.title}</span>
             <span class="cover-author">${book.authors.join(", ")}</span>
@@ -362,7 +387,7 @@ function bookList(books: BookSummary[]): SafeHTML {
       html`<a class="tag" href="/app/tag/${encodeURIComponent(t)}">${t}</a>`
     );
     const coverCell = book.has_cover
-      ? html`<img class="cover-small" src="/app/cover/${book.id}" alt="">`
+      ? html`<img class="cover-small" src="/app/cover/${book.id}" alt="" style="view-transition-name: cover-${book.id};">`
       : html`<span class="no-cover-small"></span>`;
     const formats = book.formats.join(" · ");
     const seriesCell = book.series
