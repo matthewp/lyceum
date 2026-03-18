@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join, extname } from "node:path";
 import { logger as root } from "./logger.ts";
 
@@ -111,7 +112,13 @@ export function startServer(config: ServerConfig) {
     try {
       const filePath = join(import.meta.dirname!, "..", "public", ...fileName.split("/"));
       const data = readFileSync(filePath);
-      const headers: Record<string, string> = { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" };
+      const etag = `"${createHash("md5").update(data).digest("hex")}"`;
+      if (req.headers["if-none-match"] === etag) {
+        res.writeHead(304);
+        res.end();
+        return;
+      }
+      const headers: Record<string, string> = { "Content-Type": contentType, "Cache-Control": "no-cache", "ETag": etag };
       if (fileName === "sw.js") headers["Service-Worker-Allowed"] = "/";
       res.writeHead(200, headers);
       res.end(data);
