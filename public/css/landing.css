@@ -1,0 +1,192 @@
+body {
+  min-height: 100vh;
+  background: #0a0908;
+}
+
+.landing {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* --- Left: title + CTA --- */
+
+.landing-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 80px 72px;
+  border-right: 1px solid rgba(240,232,220,0.08);
+}
+
+.landing-logo {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: rgba(240,232,220,0.5);
+  text-decoration: none;
+  margin-bottom: 36px;
+  transition: color 150ms;
+}
+
+.landing-logo-img {
+  height: 45px;
+  display: block;
+}
+
+.landing-title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(5rem, 9vw, 9rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: #fbbf24;
+  margin-bottom: 32px;
+}
+
+.landing-tagline {
+  font-size: 1.15em;
+  color: rgba(240,232,220,0.45);
+  line-height: 1.6;
+  max-width: 420px;
+  margin-bottom: 48px;
+}
+
+.landing-cta {
+  display: inline-block;
+  background: #fbbf24;
+  color: #0a0908;
+  font-weight: 700;
+  font-size: 1.05em;
+  padding: 16px 36px;
+  border-radius: 8px;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: background 150ms, color 150ms;
+  align-self: flex-start;
+}
+.landing-cta:hover {
+  background: #ec4899;
+  color: #fff;
+}
+
+/* --- Right: MCP card --- */
+
+.landing-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 80px 72px;
+}
+
+.landing-card {
+  max-width: 440px;
+}
+
+.card-heading {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 2em;
+  font-weight: 800;
+  color: #f0e8dc;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+
+.card-sub {
+  font-size: 1em;
+  color: rgba(240,232,220,0.4);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.card-url-wrap {
+  position: relative;
+  margin-bottom: 36px;
+}
+
+.card-url {
+  background: rgba(6,182,212,0.07);
+  border: 2px solid #06b6d4;
+  border-radius: 8px;
+  padding: 16px 80px 16px 20px;
+  overflow-x: auto;
+}
+.card-url code {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+  color: #06b6d4;
+}
+
+.copy-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 1px solid #06b6d4;
+  border-radius: 5px;
+  color: #06b6d4;
+  font-family: var(--font);
+  font-size: 0.78em;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 150ms, color 150ms, border-color 150ms;
+  white-space: nowrap;
+}
+.copy-btn:hover {
+  background: #06b6d4;
+  color: #0a0908;
+}
+.copy-btn.copied {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  color: #0a0908;
+}
+
+.landing-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.landing-features li {
+  font-size: 0.95em;
+  color: rgba(240,232,220,0.4);
+  padding-left: 20px;
+  position: relative;
+  line-height: 1.4;
+}
+.landing-features li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fbbf24;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 900px) {
+  .landing {
+    grid-template-columns: 1fr;
+  }
+  .landing-left {
+    padding: 64px 32px 48px;
+    border-right: none;
+    border-bottom: 1px solid rgba(240,232,220,0.08);
+  }
+  .landing-right {
+    padding: 48px 32px 64px;
+  }
+  .landing-title {
+    font-size: clamp(4rem, 14vw, 6rem);
+  }
+}

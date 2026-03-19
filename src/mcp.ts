@@ -1,20 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import {
-  listBooks,
-  getBook,
-  searchBooks,
-  listAuthors,
-  listTags,
-  listSeries,
-  setMetadata,
-  setCover,
-  deleteBooks,
-  removeFormats,
-  convertBook,
-  downloadBook,
-  bookDownloadPath,
-} from "./calibre.ts";
+import type { StorageBackend } from "./storage/index.ts";
 import { createSignedUrl } from "./auth.ts";
 import { fetchMetadata } from "./metadata.ts";
 import {
@@ -25,14 +11,12 @@ import {
   sendToDevice,
 } from "./devices/index.ts";
 
-const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
-
-export function createMcpServer(): McpServer {
+export function createMcpServer(storage: StorageBackend, baseUrl: string): McpServer {
   const server = new McpServer({
     name: "lyceum",
     version: "1.0.0",
     icons: [{
-      src: `${BASE_URL}/public/favicon.png`,
+      src: `${baseUrl}/public/favicon.png`,
       mimeType: "image/png",
     }],
   });
@@ -40,11 +24,11 @@ export function createMcpServer(): McpServer {
   server.registerTool("list_books", {
     description: "List books in the Calibre library, sorted by most recently added.",
     inputSchema: {
-      limit: z.number().optional().describe("Max books to return (default 20)"),
-      offset: z.number().optional().describe("Offset for pagination (default 0)"),
+      limit: z.coerce.number().optional().describe("Max books to return (default 20)"),
+      offset: z.coerce.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ limit, offset }) => {
-    const result = await listBooks({ limit: limit ?? 20, offset: offset ?? 0 });
+    const result = await storage.listBooks({ limit: limit ?? 20, offset: offset ?? 0 });
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -53,10 +37,10 @@ export function createMcpServer(): McpServer {
   server.registerTool("get_book", {
     description: "Get full details for a specific book by ID, including authors, tags, series, formats, and description.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
     },
   }, async ({ id }) => {
-    const book = await getBook(id);
+    const book = await storage.getBook(id);
     if (!book) {
       return { content: [{ type: "text", text: "Book not found." }], isError: true };
     }
@@ -69,11 +53,11 @@ export function createMcpServer(): McpServer {
     description: "Search books by title, author, tag, or series name. Supports Calibre's search syntax (e.g. author:Asimov, tag:sci-fi).",
     inputSchema: {
       query: z.string().describe("Search query"),
-      limit: z.number().optional().describe("Max results (default 20)"),
-      offset: z.number().optional().describe("Offset for pagination (default 0)"),
+      limit: z.coerce.number().optional().describe("Max results (default 20)"),
+      offset: z.coerce.number().optional().describe("Offset for pagination (default 0)"),
     },
   }, async ({ query, limit, offset }) => {
-    const result = await searchBooks(query, { limit: limit ?? 20, offset: offset ?? 0 });
+    const result = await storage.searchBooks(query, { limit: limit ?? 20, offset: offset ?? 0 });
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
@@ -82,7 +66,7 @@ export function createMcpServer(): McpServer {
   server.registerTool("list_authors", {
     description: "List all authors in the library with book counts.",
   }, async () => {
-    const authors = await listAuthors();
+    const authors = await storage.listAuthors();
     return {
       content: [{ type: "text", text: JSON.stringify(authors, null, 2) }],
     };
@@ -91,29 +75,44 @@ export function createMcpServer(): McpServer {
   server.registerTool("list_tags", {
     description: "List all tags in the library with book counts.",
   }, async () => {
-    const tags = await listTags();
+    const tags = await storage.listTags();
     return {
       content: [{ type: "text", text: JSON.stringify(tags, null, 2) }],
     };
   });
 
   server.registerTool("list_series", {
-    description: "List all series in the library with book counts.",
+    description: "List all series in the library with book counts. Each result includes the series name and count. To get books in a series, use list_books_by_series with the series_id from a book's detail.",
   }, async () => {
-    const series = await listSeries();
+    const series = await storage.listSeries();
     return {
       content: [{ type: "text", text: JSON.stringify(series, null, 2) }],
+    };
+  });
+
+  server.registerTool("list_books_by_series", {
+    description: "List all books in a series, ordered by series index. The series_id can be found in the series_id field of any book detail or book summary.",
+    inputSchema: {
+      series_id: z.coerce.number().describe("The series ID"),
+    },
+  }, async ({ series_id }) => {
+    const { books, total, seriesName } = await storage.listBooksBySeries(series_id, { limit: 200 });
+    if (!seriesName) {
+      return { content: [{ type: "text", text: "Series not found." }], isError: true };
+    }
+    return {
+      content: [{ type: "text", text: JSON.stringify({ series: seriesName, total, books }, null, 2) }],
     };
   });
 
   server.registerTool("get_download_link", {
     description: "Get a temporary download link for a book file. Returns a signed URL that expires in 5 minutes.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       format: z.string().describe("File format (e.g. EPUB, PDF, MOBI)"),
     },
   }, async ({ id, format }) => {
-    const url = createSignedUrl(BASE_URL, `/download${bookDownloadPath(format, id)}`, 300);
+    const url = createSignedUrl(baseUrl, `/download${storage.bookDownloadPath(format, id)}`, 300);
     return {
       content: [{ type: "text", text: url }],
     };
@@ -122,7 +121,7 @@ export function createMcpServer(): McpServer {
   server.registerTool("get_upload_link", {
     description: "Get a temporary upload link to add a book to the Calibre library. Returns a signed URL that opens a file upload form in the browser. The link expires in 10 minutes.",
   }, async () => {
-    const url = createSignedUrl(BASE_URL, "/upload", 600);
+    const url = createSignedUrl(baseUrl, "/upload", 600);
     return {
       content: [{ type: "text", text: url }],
     };
@@ -131,12 +130,26 @@ export function createMcpServer(): McpServer {
   server.registerTool("get_view_link", {
     description: "Get a temporary link to view a book's details page showing its cover and metadata. Returns a signed URL that expires in 10 minutes. IMPORTANT: Always present this URL as a markdown link like [View Book](url) so the full URL is preserved in the href.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
     },
   }, async ({ id }) => {
-    const book = await getBook(id);
-    const url = createSignedUrl(BASE_URL, `/view/${id}`, 600);
+    const book = await storage.getBook(id);
+    const url = createSignedUrl(baseUrl, `/view/${id}`, 600);
     const label = book ? `View "${book.title}"` : "View book";
+    return {
+      content: [{ type: "text", text: `[${label}](${url})` }],
+    };
+  });
+
+  server.registerTool("get_add_format_link", {
+    description: "Get a temporary link to upload an additional format (e.g. EPUB, MOBI, PDF) to an existing book. Returns a signed URL that opens a file upload form in the browser. The link expires in 10 minutes. IMPORTANT: Always present this URL as a markdown link like [Add Format](url) so the full URL is preserved in the href.",
+    inputSchema: {
+      id: z.coerce.number().describe("The book ID"),
+    },
+  }, async ({ id }) => {
+    const book = await storage.getBook(id);
+    const url = createSignedUrl(baseUrl, `/add-format/${id}`, 600);
+    const label = book ? `Add format to "${book.title}"` : "Add format";
     return {
       content: [{ type: "text", text: `[${label}](${url})` }],
     };
@@ -145,12 +158,12 @@ export function createMcpServer(): McpServer {
   server.registerTool("set_metadata", {
     description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       fields: z.record(z.string(), z.unknown()).describe('Metadata fields to set (e.g. {"title": "New Title", "tags": ["fiction", "sci-fi"], "authors": ["Author Name"]})'),
     },
   }, async ({ id, fields }) => {
     try {
-      await setMetadata(id, fields as Record<string, unknown>);
+      await storage.setMetadata(id, fields as Record<string, unknown>);
       return {
         content: [{ type: "text", text: "Metadata updated successfully." }],
       };
@@ -165,12 +178,12 @@ export function createMcpServer(): McpServer {
   server.registerTool("set_cover", {
     description: "Set a book's cover image from a URL. Use this after fetch_metadata to apply a cover from the returned cover_url.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       image_url: z.string().describe("URL of the cover image to download and set"),
     },
   }, async ({ id, image_url }) => {
     try {
-      await setCover(id, image_url);
+      await storage.setCover(id, image_url);
       return {
         content: [{ type: "text", text: "Cover updated successfully." }],
       };
@@ -185,11 +198,14 @@ export function createMcpServer(): McpServer {
   server.registerTool("remove_book", {
     description: "Permanently remove one or more books from the Calibre library. This cannot be undone.",
     inputSchema: {
-      ids: z.array(z.number()).describe("Array of book IDs to remove"),
+      ids: z.preprocess(
+        (v) => typeof v === "string" ? JSON.parse(v) : v,
+        z.array(z.coerce.number())
+      ).describe("Array of book IDs to remove"),
     },
   }, async ({ ids }) => {
     try {
-      await deleteBooks(ids);
+      await storage.deleteBooks(ids);
       const label = ids.length === 1 ? `Book ${ids[0]} removed.` : `${ids.length} books removed.`;
       return {
         content: [{ type: "text", text: label }],
@@ -205,12 +221,15 @@ export function createMcpServer(): McpServer {
   server.registerTool("remove_format", {
     description: "Remove one or more file formats from a book (e.g. remove the MOBI copy but keep EPUB).",
     inputSchema: {
-      id: z.number().describe("The book ID"),
-      formats: z.array(z.string()).describe("Formats to remove (e.g. [\"EPUB\", \"MOBI\"])"),
+      id: z.coerce.number().describe("The book ID"),
+      formats: z.preprocess(
+        (v) => typeof v === "string" ? JSON.parse(v) : v,
+        z.array(z.string())
+      ).describe("Formats to remove (e.g. [\"EPUB\", \"MOBI\"])"),
     },
   }, async ({ id, formats }) => {
     try {
-      await removeFormats(id, formats);
+      await storage.removeFormats(id, formats);
       return {
         content: [{ type: "text", text: `Removed ${formats.join(", ")} from book ${id}.` }],
       };
@@ -225,13 +244,13 @@ export function createMcpServer(): McpServer {
   server.registerTool("convert_book", {
     description: "Convert a book to a different format (e.g. EPUB to MOBI). This may take a few minutes.",
     inputSchema: {
-      id: z.number().describe("The book ID"),
+      id: z.coerce.number().describe("The book ID"),
       from_format: z.string().describe("Source format (e.g. EPUB)"),
       to_format: z.string().describe("Target format (e.g. MOBI, PDF, AZW3)"),
     },
   }, async ({ id, from_format, to_format }) => {
     try {
-      const result = await convertBook(id, from_format, to_format);
+      const result = await storage.convertBook(id, from_format, to_format);
       return {
         content: [{ type: "text", text: result }],
       };
@@ -355,15 +374,15 @@ export function createMcpServer(): McpServer {
   }, async ({ device_name, book_id, format }) => {
     try {
       // Get book metadata for the filename
-      const book = await getBook(book_id);
+      const book = await storage.getBook(book_id);
       if (!book) throw new Error(`Book ${book_id} not found`);
       const ext = format.toLowerCase();
       const authors = (book.authors as string[])?.join(" & ") ?? "";
       const rawName = authors ? `${book.title} - ${authors}.${ext}` : `${book.title}.${ext}`;
       const filename = rawName.replace(/[:<>?*"|\\\/]/g, "_");
 
-      const downloadPath = bookDownloadPath(format, book_id);
-      const res = await downloadBook(downloadPath);
+      const downloadPath = storage.bookDownloadPath(format, book_id);
+      const res = await storage.downloadBook(downloadPath);
       if (!res.ok) {
         const body = await res.text();
         throw new Error(`Failed to download book (${res.status}): ${body}`);

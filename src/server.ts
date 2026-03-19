@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join, extname } from "node:path";
 import { logger as root } from "./logger.ts";
 
@@ -13,14 +14,23 @@ import {
   validateToken,
   verifySignedUrl,
   checkPassword,
+  createSessionCookie,
+  verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
-import { landingPage, authorizePage, uploadPage, viewBookPage } from "./templates.ts";
+import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appSearchPage } from "./templates.ts";
 import { parseMultipart } from "./multipart.ts";
-import { addBook, downloadBook, getBook, getBookCover } from "./calibre.ts";
+import type { StorageBackend } from "./storage/index.ts";
 
-const PORT = parseInt(process.env.PORT ?? "3000", 10);
-const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PORT}`;
+export interface ServerConfig {
+  port: number;
+  baseUrl: string;
+  storage: StorageBackend;
+}
+
+let PORT: number;
+let BASE_URL: string;
+let storage: StorageBackend;
 
 function json(res: import("node:http").ServerResponse, data: unknown, status = 200) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -50,7 +60,12 @@ function readBodyRaw(req: import("node:http").IncomingMessage): Promise<Buffer> 
   });
 }
 
-const server = createServer(async (req, res) => {
+export function startServer(config: ServerConfig) {
+  PORT = config.port;
+  BASE_URL = config.baseUrl;
+  storage = config.storage;
+
+  const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", BASE_URL);
   const path = url.pathname;
 
@@ -80,9 +95,11 @@ const server = createServer(async (req, res) => {
       ".png": "image/png",
       ".ico": "image/x-icon",
       ".svg": "image/svg+xml",
+      ".css": "text/css",
+      ".js": "text/javascript",
     };
     const fileName = path.slice("/public/".length);
-    if (fileName.includes("..") || fileName.includes("/")) {
+    if (fileName.includes("..")) {
       json(res, { error: "Not found" }, 404);
       return;
     }
@@ -93,9 +110,17 @@ const server = createServer(async (req, res) => {
       return;
     }
     try {
-      const filePath = join(import.meta.dirname!, "..", "public", fileName);
+      const filePath = join(import.meta.dirname!, "..", "public", ...fileName.split("/"));
       const data = readFileSync(filePath);
-      res.writeHead(200, { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" });
+      const etag = `"${createHash("md5").update(data).digest("hex")}"`;
+      if (req.headers["if-none-match"] === etag) {
+        res.writeHead(304);
+        res.end();
+        return;
+      }
+      const headers: Record<string, string> = { "Content-Type": contentType, "Cache-Control": "no-cache", "ETag": etag };
+      if (fileName === "sw.js") headers["Service-Worker-Allowed"] = "/";
+      res.writeHead(200, headers);
       res.end(data);
     } catch {
       json(res, { error: "Not found" }, 404);
@@ -163,8 +188,7 @@ const server = createServer(async (req, res) => {
       redirect.searchParams.set("code", code);
       if (state) redirect.searchParams.set("state", state);
 
-      res.writeHead(302, { Location: redirect.toString() });
-      res.end();
+      sendHtml(res, authorizeSuccessPage(redirect.toString()));
       return;
     }
   }
@@ -210,7 +234,7 @@ const server = createServer(async (req, res) => {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
       });
-      const mcpServer = createMcpServer();
+      const mcpServer = createMcpServer(storage, BASE_URL);
       await mcpServer.connect(transport);
 
       const body = await readBody(req);
@@ -238,20 +262,21 @@ const server = createServer(async (req, res) => {
 
     const bookId = parseInt(viewMatch[1], 10);
     try {
-      const book = await getBook(bookId);
+      const book = await storage.getBook(bookId);
       if (!book) {
         json(res, { error: "Book not found" }, 404);
         return;
       }
 
       let coverDataUrl = "";
-      const coverBuf = await getBookCover(bookId);
+      const coverBuf = await storage.getBookCover(bookId);
       if (coverBuf) {
         coverDataUrl = `data:image/jpeg;base64,${coverBuf.toString("base64")}`;
       }
 
-      sendHtml(res, viewBookPage(book, coverDataUrl));
+      sendHtml(res, viewBookPage(book, "mcp", coverDataUrl));
     } catch (e: any) {
+      log.error({ err: e, bookId }, "View book failed");
       json(res, { error: e.message }, 500);
     }
     return;
@@ -269,7 +294,7 @@ const server = createServer(async (req, res) => {
     }
 
     try {
-      const upstream = await downloadBook(downloadPath);
+      const upstream = await storage.downloadBook(downloadPath);
       if (!upstream.ok) {
         res.writeHead(upstream.status);
         res.end();
@@ -286,9 +311,54 @@ const server = createServer(async (req, res) => {
       const body = new Uint8Array(await upstream.arrayBuffer());
       res.end(body);
     } catch (e: any) {
+      log.error({ err: e, path: downloadPath }, "Download failed");
       json(res, { error: e.message }, 500);
     }
     return;
+  }
+
+  const addFormatMatch = path.match(/^\/add-format\/(\d+)$/);
+  if (addFormatMatch) {
+    const bookId = parseInt(addFormatMatch[1], 10);
+    const expires = url.searchParams.get("expires") ?? "";
+    const sig = url.searchParams.get("sig") ?? "";
+
+    if (!verifySignedUrl(path, expires, sig)) {
+      json(res, { error: "Invalid or expired link" }, 403);
+      return;
+    }
+
+    const book = await storage.getBook(bookId);
+    if (!book) {
+      json(res, { error: "Book not found" }, 404);
+      return;
+    }
+
+    if (req.method === "GET") {
+      sendHtml(res, addFormatPage(book.title));
+      return;
+    }
+
+    if (req.method === "POST") {
+      const contentType = req.headers["content-type"] ?? "";
+      const body = await readBodyRaw(req);
+      const file = parseMultipart(body, contentType);
+
+      if (!file) {
+        sendHtml(res, addFormatPage(book.title, { error: "No file received." }), 400);
+        return;
+      }
+
+      try {
+        await storage.addFormat(bookId, file.filename, file.data);
+        const ext = extname(file.filename).replace(/^\./, "").toUpperCase() || "file";
+        sendHtml(res, addFormatPage(book.title, { success: `${ext} format added successfully.` }));
+      } catch (e: any) {
+        log.error({ err: e, bookId, filename: file.filename }, "Add format failed");
+        sendHtml(res, addFormatPage(book.title, { error: `Failed: ${e.message}` }), 500);
+      }
+      return;
+    }
   }
 
   if (path === "/upload") {
@@ -316,11 +386,158 @@ const server = createServer(async (req, res) => {
       }
 
       try {
-        const result = await addBook(file.filename, file.data);
+        const result = await storage.addBook(file.filename, file.data);
         sendHtml(res, uploadPage({ success: `Added "${result.title}" (ID: ${result.book_id})` }));
       } catch (e: any) {
+        log.error({ err: e, filename: file.filename }, "Upload failed");
         sendHtml(res, uploadPage({ error: `Upload failed: ${e.message}` }), 500);
       }
+      return;
+    }
+  }
+
+  // --- App: Login ---
+  if (path === "/app/login") {
+    if (req.method === "GET") {
+      sendHtml(res, appLoginPage());
+      return;
+    }
+
+    if (req.method === "POST") {
+      const body = new URLSearchParams(await readBody(req));
+      const password = body.get("password") ?? "";
+
+      if (!checkPassword(password)) {
+        sendHtml(res, appLoginPage({ error: "Wrong password." }), 401);
+        return;
+      }
+
+      res.writeHead(302, {
+        Location: "/app",
+        "Set-Cookie": createSessionCookie(),
+      });
+      res.end();
+      return;
+    }
+  }
+
+  if (path === "/app/logout" && req.method === "POST") {
+    res.writeHead(302, {
+      Location: "/app/login",
+      "Set-Cookie": "session=; Path=/app; HttpOnly; SameSite=Lax; Max-Age=0",
+    });
+    res.end();
+    return;
+  }
+
+  // --- App: Protected routes ---
+  if (path.startsWith("/app")) {
+    if (!verifySessionCookie(req.headers.cookie)) {
+      res.writeHead(302, { Location: "/app/login" });
+      res.end();
+      return;
+    }
+
+    // Book list
+    if (req.method === "GET" && path === "/app") {
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      const perPage = 50;
+      const { books, total } = await storage.listBooks({ limit: perPage, offset: (page - 1) * perPage });
+      sendHtml(res, appBooksPage(books, total, page, perPage, "/app"));
+      return;
+    }
+
+    // Search
+    if (req.method === "GET" && path === "/app/search") {
+      const q = url.searchParams.get("q") ?? "";
+      if (!q) {
+        res.writeHead(302, { Location: "/app" });
+        res.end();
+        return;
+      }
+      const { results, count } = await storage.searchBooks(q, { limit: 100 });
+      sendHtml(res, appSearchPage(q, results, count));
+      return;
+    }
+
+    // Series page
+    const seriesMatch = path.match(/^\/app\/series\/(\d+)$/);
+    if (req.method === "GET" && seriesMatch) {
+      const seriesId = parseInt(seriesMatch[1], 10);
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      const perPage = 50;
+      const { books, total, seriesName } = await storage.listBooksBySeries(seriesId, { limit: perPage, offset: (page - 1) * perPage });
+      if (!seriesName) { json(res, { error: "Series not found" }, 404); return; }
+      sendHtml(res, appSeriesPage(seriesName, books, total, page, perPage));
+      return;
+    }
+
+    // Tag page
+    const tagMatch = path.match(/^\/app\/tag\/(.+)$/);
+    if (req.method === "GET" && tagMatch) {
+      const tag = decodeURIComponent(tagMatch[1]);
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      const perPage = 50;
+      const { books, total } = await storage.listBooksByTag(tag, { limit: perPage, offset: (page - 1) * perPage });
+      sendHtml(res, appTagPage(tag, books, total, page, perPage));
+      return;
+    }
+
+    // Book detail
+    const bookMatch = path.match(/^\/app\/book\/(\d+)$/);
+    if (req.method === "GET" && bookMatch) {
+      const bookId = parseInt(bookMatch[1], 10);
+      const book = await storage.getBook(bookId);
+      if (!book) {
+        json(res, { error: "Book not found" }, 404);
+        return;
+      }
+      sendHtml(res, viewBookPage(book, "app"));
+      return;
+    }
+
+    // Set rating
+    const ratingMatch = path.match(/^\/app\/book\/(\d+)\/rating$/);
+    if (req.method === "POST" && ratingMatch) {
+      const bookId = parseInt(ratingMatch[1], 10);
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      const rating = parseInt(params.get("rating") ?? "0", 10);
+      await storage.setMetadata(bookId, { rating: rating > 0 ? rating : null });
+      res.writeHead(302, { Location: `/app/book/${bookId}` });
+      res.end();
+      return;
+    }
+
+    // Toggle read status
+    const readMatch = path.match(/^\/app\/book\/(\d+)\/read$/);
+    if (req.method === "POST" && readMatch) {
+      const bookId = parseInt(readMatch[1], 10);
+      const book = await storage.getBook(bookId);
+      if (!book) { json(res, { error: "Book not found" }, 404); return; }
+      const newReadAt = book.read_at ? null : new Date().toISOString();
+      await storage.setMetadata(bookId, { read_at: newReadAt });
+      res.writeHead(302, { Location: `/app/book/${bookId}` });
+      res.end();
+      return;
+    }
+
+    // Cover thumbnail
+    const coverMatch = path.match(/^\/app\/cover\/(\d+)$/);
+    if (req.method === "GET" && coverMatch) {
+      const bookId = parseInt(coverMatch[1], 10);
+      const coverBuf = await storage.getBookCover(bookId);
+      if (!coverBuf) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": String(coverBuf.byteLength),
+        "Cache-Control": "public, max-age=86400",
+      });
+      res.end(coverBuf);
       return;
     }
   }
@@ -328,7 +545,9 @@ const server = createServer(async (req, res) => {
   json(res, { error: "Not found" }, 404);
 });
 
+  server.listen(PORT, () => {
+    log.info({ url: BASE_URL }, "Lyceum listening");
+  });
 
-server.listen(PORT, () => {
-  log.info({ url: BASE_URL }, "Lyceum listening");
-});
+  return server;
+}
