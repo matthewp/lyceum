@@ -40,18 +40,10 @@ function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML,
 </html>`;
 }
 
-function header(activePage?: string): SafeHTML {
-  const navLink = (href: string, label: string, id: string) => {
-    const cls = activePage === id ? ' class="active"' : '';
-    return unsafeHTML(`<a href="${href}"${cls}>${label}</a>`);
-  };
-
+function header(_activePage?: string): SafeHTML {
   return html`<header class="header">
     <div class="header-left">
       <a href="/app" class="logo"><img src="/public/logo.webp" alt="" class="logo-img">Lyceum</a>
-      <nav class="nav">
-        ${navLink("/app", "Library", "library")}
-      </nav>
     </div>
     <div class="header-right">
       <form action="/app/search" method="GET" class="search-form">
@@ -114,10 +106,10 @@ export function landingPage(baseUrl: string): SafeHTML {
   const body = html`
   <div class="landing">
     <div class="landing-left">
-      <a href="/app" class="landing-logo">
+      <div class="landing-logo">
         <img src="/public/logo.webp" alt="" class="landing-logo-img">
         Lyceum
-      </a>
+      </div>
       <h1 class="landing-title">Your<br>library.</h1>
       <p class="landing-tagline">Browse, search, and manage your ebook collection. AI-ready via MCP.</p>
       <a href="/app" class="landing-cta">Open Library &rarr;</a>

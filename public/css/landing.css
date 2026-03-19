@@ -21,23 +21,21 @@ body {
 
 .landing-logo {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   font-size: 1.1em;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: rgba(240,232,220,0.4);
+  color: rgba(240,232,220,0.5);
   text-decoration: none;
-  margin-bottom: 64px;
+  margin-bottom: 36px;
   transition: color 150ms;
 }
-.landing-logo:hover { color: #fbbf24; }
 
 .landing-logo-img {
-  height: 28px;
-  background: rgba(255,255,255,0.08);
-  padding: 4px;
-  border-radius: 4px;
+  height: 45px;
+  display: block;
 }
 
 .landing-title {
