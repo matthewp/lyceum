@@ -496,6 +496,19 @@ export function startServer(config: ServerConfig) {
       return;
     }
 
+    // Toggle read status
+    const readMatch = path.match(/^\/app\/book\/(\d+)\/read$/);
+    if (req.method === "POST" && readMatch) {
+      const bookId = parseInt(readMatch[1], 10);
+      const book = await storage.getBook(bookId);
+      if (!book) { json(res, { error: "Book not found" }, 404); return; }
+      const newReadAt = book.read_at ? null : new Date().toISOString();
+      await storage.setMetadata(bookId, { read_at: newReadAt });
+      res.writeHead(302, { Location: `/app/book/${bookId}` });
+      res.end();
+      return;
+    }
+
     // Cover thumbnail
     const coverMatch = path.match(/^\/app\/cover\/(\d+)$/);
     if (req.method === "GET" && coverMatch) {

@@ -324,6 +324,18 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
         })()
       : html``;
 
+    const readAt: string | null = book.read_at ?? null;
+    const readAtDate = readAt ? new Date(readAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : null;
+    const readBlock = html`<div class="detail-read-status">
+      <form method="POST" action="/app/book/${book.id}/read">
+        <button type="submit" class="read-toggle${readAt ? " is-read" : ""}">
+          ${readAt
+            ? html`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Read${unsafeHTML(readAtDate ? ` &middot; ${readAtDate}` : "")}`
+            : html`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Mark as read`}
+        </button>
+      </form>
+    </div>`;
+
     const backdropStyle = book.has_cover
       ? unsafeHTML(` style="--cover-url: url(/app/cover/${book.id})"`)
       : unsafeHTML("");
@@ -346,6 +358,7 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
       ${metaRow}
       ${tagsBlock}
       ${ratingBlock}
+      ${readBlock}
       ${descriptionBlock}
     </div>
   </div>`;

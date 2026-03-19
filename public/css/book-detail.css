@@ -155,6 +155,44 @@
   margin-bottom: 20px;
 }
 
+.detail-read-status {
+  margin-bottom: 20px;
+}
+
+.read-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(245,240,235,0.15);
+  background: transparent;
+  color: rgba(245,240,235,0.4);
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms, background 150ms;
+  font-family: var(--font);
+}
+
+.read-toggle:hover {
+  border-color: rgba(245,240,235,0.35);
+  color: rgba(245,240,235,0.75);
+}
+
+.read-toggle.is-read {
+  border-color: #22c55e;
+  color: #22c55e;
+  background: rgba(34,197,94,0.08);
+}
+
+.read-toggle.is-read:hover {
+  border-color: rgba(245,240,235,0.35);
+  color: rgba(245,240,235,0.5);
+  background: transparent;
+}
+
 .description {
   border-top: 1px solid rgba(245,240,235,0.08);
   padding-top: 28px;
