@@ -5,11 +5,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY bin/ bin/
 COPY src/ src/
 COPY public/ public/
 COPY tsconfig.json ./
 
 EXPOSE 3000
 
-CMD ["./bin/lyceum.js", "serve"]
+CMD ["node", "--experimental-strip-types", "src/main.ts"]

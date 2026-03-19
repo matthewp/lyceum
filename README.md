@@ -35,17 +35,10 @@ npm install
 
 ## Running
 
-Lyceum takes a subcommand:
-
-```
-lyceum serve    Start the server
-lyceum import   Import books from a Calibre content server into local storage
-```
-
 ### Local mode
 
 ```bash
-AUTH_PASSWORD=your-secret npm run dev -- serve --storage local --data-dir ./data
+AUTH_PASSWORD=your-secret STORAGE_MODE=local DATA_DIR=./data npm run dev
 ```
 
 For production:
@@ -55,13 +48,13 @@ AUTH_PASSWORD=your-secret \
   STORAGE_MODE=local \
   DATA_DIR=/var/lib/lyceum \
   BASE_URL=https://lyceum.yourdomain.com \
-  npm start -- serve
+  npm start
 ```
 
 ### Calibre mode
 
 ```bash
-AUTH_PASSWORD=your-secret npm run dev -- serve
+AUTH_PASSWORD=your-secret npm run dev
 ```
 
 For production:
@@ -70,20 +63,20 @@ For production:
 AUTH_PASSWORD=your-secret \
   CALIBRE_SERVER_URL=http://calibre:8080 \
   BASE_URL=https://lyceum.yourdomain.com \
-  npm start -- serve
+  npm start
 ```
 
 ### Importing from Calibre
 
-To migrate an existing Calibre library into local storage:
+To migrate an existing Calibre library into local storage, run the import script once before starting the server:
 
 ```bash
-AUTH_PASSWORD=your-secret \
-  CALIBRE_SERVER_URL=http://calibre:8080 \
-  npm start -- import --data-dir ./data
+CALIBRE_SERVER_URL=http://calibre:8080 \
+  DATA_DIR=./data \
+  npm run import
 ```
 
-This downloads all books and covers from the Calibre content server and stores them in the local SQLite database and file store. It can be run once before switching to `--storage local`.
+This downloads all books and covers from the Calibre content server and stores them in the local SQLite database and file store.
 
 ## Container
 
