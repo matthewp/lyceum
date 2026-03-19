@@ -59,7 +59,7 @@ export class LocalBackend implements StorageBackend {
       SELECT b.*, s.name as series_name
       FROM books b
       LEFT JOIN series s ON b.series_id = s.id
-      ORDER BY b.created_at DESC
+      ORDER BY NULLIF(b.created_at, 'None') DESC NULLS LAST
       LIMIT ? OFFSET ?
     `).all(limit, offset) as BookRow[];
 
@@ -137,7 +137,7 @@ export class LocalBackend implements StorageBackend {
       JOIN book_tags bt ON bt.book_id = b.id
       JOIN tags t ON t.id = bt.tag_id
       WHERE t.name = ?
-      ORDER BY b.created_at DESC LIMIT ? OFFSET ?
+      ORDER BY NULLIF(b.created_at, 'None') DESC NULLS LAST LIMIT ? OFFSET ?
     `).all(tag, limit, offset) as BookRow[];
 
     return { books: rows.map(row => this.rowToSummary(row)), total };

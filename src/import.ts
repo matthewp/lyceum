@@ -68,8 +68,8 @@ export async function importFromCalibre(config: ImportConfig) {
           detail.series_index,
           0,
           detail.read_at || null,
-          detail.timestamp || new Date().toISOString(),
-          detail.last_modified || new Date().toISOString(),
+          (detail.timestamp && detail.timestamp !== "None") ? detail.timestamp : new Date().toISOString(),
+          (detail.last_modified && detail.last_modified !== "None") ? detail.last_modified : new Date().toISOString(),
         );
         const bookId = result.lastInsertRowid as number;
         const path = bookDirPath(author, detail.title, bookId);
