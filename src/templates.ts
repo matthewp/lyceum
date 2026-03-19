@@ -316,13 +316,16 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
       ? html`<p class="detail-meta-row">${unsafeHTML(metaParts.map(p => p.toString()).join(""))}</p>`
       : html``;
 
-    const ratingVal = typeof book.rating === "number" && book.rating > 0 ? book.rating : null;
-    const ratingBlock = ratingVal
-      ? (() => {
-          const stars = Math.round(ratingVal / 2);
-          return html`<p class="detail-rating">${"★".repeat(stars)}${"☆".repeat(5 - stars)}</p>`;
-        })()
-      : html``;
+    const currentRating = typeof book.rating === "number" && book.rating > 0 ? Math.round(book.rating) : 0;
+    const ratingBlock = html`<form method="POST" action="/app/book/${book.id}/rating" class="rating-form">${unsafeHTML(
+      Array.from({ length: 5 }, (_, i) => {
+        const val = i + 1;
+        const filled = val <= currentRating;
+        // clicking the active star clears the rating
+        const submitVal = val === currentRating ? 0 : val;
+        return `<button type="submit" name="rating" value="${submitVal}" class="star-btn${filled ? " filled" : ""}" aria-label="${val} star">${filled ? "★" : "☆"}</button>`;
+      }).join("")
+    )}</form>`;
 
     const readAt: string | null = book.read_at ?? null;
     const readAtDate = readAt ? new Date(readAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : null;
@@ -363,7 +366,7 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     </div>
   </div>`;
 
-    const scrollModule = `(function(){var h=document.querySelector('.header');if(!h)return;function u(){h.classList.toggle('opaque',window.scrollY>30);}window.addEventListener('scroll',u,{passive:true});u();})();`;
+    const scrollModule = `(function(){var h=document.querySelector('.header');if(!h)return;function u(){h.classList.toggle('opaque',window.scrollY>30);}window.addEventListener('scroll',u,{passive:true});u();})();(function(){var f=document.querySelector('.rating-form');if(!f)return;var btns=Array.from(f.querySelectorAll('.star-btn'));function applyRating(n){btns.forEach(function(b,j){var v=j+1;var filled=v<=n;b.classList.toggle('filled',filled);b.textContent=filled?'★':'☆';b.value=(v===n?0:v).toString();});}f.addEventListener('submit',function(e){e.preventDefault();var val=parseInt(e.submitter.value,10);fetch(f.action,{method:'POST',body:new URLSearchParams({rating:val})});applyRating(val>0?val:0);});btns.forEach(function(btn,i){btn.addEventListener('mouseenter',function(){btns.forEach(function(b,j){b.classList.toggle('preview',j<=i);});});btn.addEventListener('mouseleave',function(){btns.forEach(function(b){b.classList.remove('preview');});});});})();`;
     return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", scrollModule, "book-detail-page");
   }
 

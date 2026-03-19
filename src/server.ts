@@ -496,6 +496,19 @@ export function startServer(config: ServerConfig) {
       return;
     }
 
+    // Set rating
+    const ratingMatch = path.match(/^\/app\/book\/(\d+)\/rating$/);
+    if (req.method === "POST" && ratingMatch) {
+      const bookId = parseInt(ratingMatch[1], 10);
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      const rating = parseInt(params.get("rating") ?? "0", 10);
+      await storage.setMetadata(bookId, { rating: rating > 0 ? rating : null });
+      res.writeHead(302, { Location: `/app/book/${bookId}` });
+      res.end();
+      return;
+    }
+
     // Toggle read status
     const readMatch = path.match(/^\/app\/book\/(\d+)\/read$/);
     if (req.method === "POST" && readMatch) {

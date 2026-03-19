@@ -148,11 +148,31 @@
   padding: 5px 14px;
 }
 
-.detail-rating {
-  font-size: 1.3em;
-  color: #f59e0b;
-  letter-spacing: 4px;
+.rating-form {
+  display: flex;
+  gap: 4px;
   margin-bottom: 20px;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  font-size: 1.4em;
+  color: rgba(245,240,235,0.2);
+  cursor: pointer;
+  transition: color 100ms, transform 100ms;
+  line-height: 1;
+}
+
+.star-btn.filled {
+  color: #f59e0b;
+}
+
+.star-btn:hover,
+.star-btn.preview {
+  color: #f59e0b;
+  transform: scale(1.15);
 }
 
 .detail-read-status {
