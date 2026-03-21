@@ -7,7 +7,13 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   const path = url.pathname;
 
-  // Skip: non-GET, login, MCP, signed URLs
+  // Mutations: evict the parent page from cache so the next GET is fresh
+  if (e.request.method === "POST" && path.startsWith("/app/")) {
+    const parent = path.replace(/\/[^/]+$/, "");
+    caches.open(SWR_CACHE).then((c) => c.delete(new Request(url.origin + parent)));
+    return;
+  }
+
   if (e.request.method !== "GET") return;
   if (path === "/app/login") return;
   if (path.startsWith("/mcp")) return;
