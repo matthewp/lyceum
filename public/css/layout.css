@@ -309,6 +309,8 @@
 /* --- Sidebar toggle button --- */
 
 .sidebar-toggle {
+  position: relative;
+  z-index: 2;
   background: none;
   border: none;
   padding: 6px;
