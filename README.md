@@ -29,8 +29,6 @@ npm install
 | `CALIBRE_USERNAME` | No | — | Username for Calibre content server Digest auth (`calibre` mode only) |
 | `CALIBRE_PASSWORD` | No | — | Password for Calibre content server Digest auth (`calibre` mode only) |
 | `BASE_URL` | No | `http://localhost:3000` | Public URL of this server (used for OAuth redirects and signed URLs) |
-| `AUTH_STATE_FILE` | No | `/data/auth-state.json` | Path to persist OAuth state (clients, tokens) across restarts |
-| `DEVICES_FILE` | No | `/data/devices.json` | Path to persist configured e-reader devices |
 | `PORT` | No | `3000` | Port to listen on |
 
 ## Running
@@ -190,7 +188,7 @@ Send books to [Xteink](https://www.xteink.com/) e-readers (X3, X4) via the XT Cl
 
 Note: The Xteink cloud API communicates over unencrypted HTTP.
 
-Device credentials are persisted to `DEVICES_FILE` so they survive restarts.
+Device credentials are persisted to `lyceum.db` so they survive restarts.
 
 ## Authentication
 

@@ -1,5 +1,6 @@
 node_modules/
 dist/
 dev.sh
-devices.json
-auth-state.json
+*.db
+*.db-wal
+*.db-shm

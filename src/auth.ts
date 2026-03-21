@@ -1,7 +1,6 @@
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 import { logger as root } from "./logger.ts";
+import { stateDb } from "./state.ts";
 
 const log = root.child({ module: "auth" });
 
@@ -11,48 +10,25 @@ if (!PASSWORD) {
   process.exit(1);
 }
 
-const STATE_FILE = process.env.AUTH_STATE_FILE ?? "/data/auth-state.json";
+// Clean up expired auth codes on startup
+stateDb.prepare("DELETE FROM auth_codes WHERE expires_at < ?").run(Date.now());
 
-interface PersistedState {
-  authCodes: Record<string, { clientId: string; redirectUri: string; expiresAt: number }>;
-  accessTokens: string[];
-  clients: Record<string, { clientId: string; redirectUris: string[] }>;
-}
-
-// In-memory stores
+// Load state from DB into memory
 const authCodes = new Map<string, { clientId: string; redirectUri: string; expiresAt: number }>();
 const accessTokens = new Set<string>();
 const clients = new Map<string, { clientId: string; redirectUris: string[] }>();
 
-function loadState(): void {
-  try {
-    const data = JSON.parse(readFileSync(STATE_FILE, "utf-8")) as PersistedState;
-    for (const [k, v] of Object.entries(data.authCodes ?? {})) {
-      if (v.expiresAt > Date.now()) authCodes.set(k, v);
-    }
-    for (const t of data.accessTokens ?? []) accessTokens.add(t);
-    for (const [k, v] of Object.entries(data.clients ?? {})) clients.set(k, v);
-    log.info({ clients: clients.size, tokens: accessTokens.size }, "Loaded state");
-  } catch {
-    log.info("No existing state file, starting fresh");
-  }
+for (const row of stateDb.prepare("SELECT code, client_id, redirect_uri, expires_at FROM auth_codes").all() as { code: string; client_id: string; redirect_uri: string; expires_at: number }[]) {
+  authCodes.set(row.code, { clientId: row.client_id, redirectUri: row.redirect_uri, expiresAt: row.expires_at });
+}
+for (const row of stateDb.prepare("SELECT token FROM access_tokens").all() as { token: string }[]) {
+  accessTokens.add(row.token);
+}
+for (const row of stateDb.prepare("SELECT client_id, redirect_uris FROM clients").all() as { client_id: string; redirect_uris: string }[]) {
+  clients.set(row.client_id, { clientId: row.client_id, redirectUris: JSON.parse(row.redirect_uris) });
 }
 
-function saveState(): void {
-  const state: PersistedState = {
-    authCodes: Object.fromEntries(authCodes),
-    accessTokens: [...accessTokens],
-    clients: Object.fromEntries(clients),
-  };
-  try {
-    mkdirSync(dirname(STATE_FILE), { recursive: true });
-    writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-  } catch (e: any) {
-    log.error({ err: e }, "Failed to save state");
-  }
-}
-
-loadState();
+log.info({ clients: clients.size, tokens: accessTokens.size }, "Loaded state");
 
 function generateToken(): string {
   return randomBytes(32).toString("hex");
@@ -67,7 +43,7 @@ export function registerClient(body: {
   const clientId = generateToken();
   const clientSecret = generateToken();
   clients.set(clientId, { clientId, redirectUris: body.redirect_uris });
-  saveState();
+  stateDb.prepare("INSERT INTO clients (client_id, redirect_uris) VALUES (?, ?)").run(clientId, JSON.stringify(body.redirect_uris));
 
   return {
     client_id: clientId,
@@ -82,12 +58,9 @@ export function createAuthCode(clientId: string, redirectUri: string): string | 
   if (!client.redirectUris.includes(redirectUri)) return null;
 
   const code = generateToken();
-  authCodes.set(code, {
-    clientId,
-    redirectUri,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-  });
-  saveState();
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+  authCodes.set(code, { clientId, redirectUri, expiresAt });
+  stateDb.prepare("INSERT INTO auth_codes (code, client_id, redirect_uri, expires_at) VALUES (?, ?, ?, ?)").run(code, clientId, redirectUri, expiresAt);
   return code;
 }
 
@@ -102,13 +75,15 @@ export function exchangeCode(
   if (entry.redirectUri !== redirectUri) return null;
   if (Date.now() > entry.expiresAt) {
     authCodes.delete(code);
+    stateDb.prepare("DELETE FROM auth_codes WHERE code = ?").run(code);
     return null;
   }
 
   authCodes.delete(code);
+  stateDb.prepare("DELETE FROM auth_codes WHERE code = ?").run(code);
   const token = generateToken();
   accessTokens.add(token);
-  saveState();
+  stateDb.prepare("INSERT INTO access_tokens (token) VALUES (?)").run(token);
   return token;
 }
 

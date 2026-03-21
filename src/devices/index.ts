@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 import { logger as root } from "../logger.ts";
+import { stateDb } from "../state.ts";
 import { BooxProvider } from "./boox.ts";
 import { XteinkProvider } from "./xteink.ts";
 
@@ -34,27 +33,6 @@ const providers: Record<string, DeviceProvider> = {
   xteink: new XteinkProvider(),
 };
 
-// --- Persistence ---
-
-const DEVICES_FILE = process.env.DEVICES_FILE ?? "/data/devices.json";
-
-function loadDevices(): DeviceInfo[] {
-  try {
-    return JSON.parse(readFileSync(DEVICES_FILE, "utf-8")) as DeviceInfo[];
-  } catch {
-    return [];
-  }
-}
-
-function saveDevices(devices: DeviceInfo[]): void {
-  try {
-    mkdirSync(dirname(DEVICES_FILE), { recursive: true });
-    writeFileSync(DEVICES_FILE, JSON.stringify(devices, null, 2));
-  } catch (e: any) {
-    log.error({ err: e }, "Failed to save devices");
-  }
-}
-
 // --- Pending auth state (in-memory only) ---
 
 const pendingAuths = new Map<string, PendingAuth>();
@@ -69,8 +47,8 @@ export async function addDevice(
   const provider = providers[type];
   if (!provider) throw new Error(`Unknown device type: ${type}. Supported: ${Object.keys(providers).join(", ")}`);
 
-  const devices = loadDevices();
-  if (devices.some(d => d.name === name)) throw new Error(`Device "${name}" already exists`);
+  const existing = stateDb.prepare("SELECT 1 FROM devices WHERE name = ?").get(name);
+  if (existing) throw new Error(`Device "${name}" already exists`);
 
   const result = await provider.startAuth(params);
   pendingAuths.set(name, { type, params });
@@ -95,9 +73,7 @@ export async function verifyDevice(
     credentials: info.credentials,
   };
 
-  const devices = loadDevices();
-  devices.push(device);
-  saveDevices(devices);
+  stateDb.prepare("INSERT INTO devices (id, name, type, credentials) VALUES (?, ?, ?, ?)").run(device.id, device.name, device.type, JSON.stringify(device.credentials));
   pendingAuths.delete(name);
 
   log.info({ name, type: pending.type }, "Device added");
@@ -105,15 +81,12 @@ export async function verifyDevice(
 }
 
 export function listDevices(): { id: string; name: string; type: string }[] {
-  return loadDevices().map(({ id, name, type }) => ({ id, name, type }));
+  return stateDb.prepare("SELECT id, name, type FROM devices").all() as { id: string; name: string; type: string }[];
 }
 
 export function removeDevice(name: string): void {
-  const devices = loadDevices();
-  const idx = devices.findIndex(d => d.name === name);
-  if (idx === -1) throw new Error(`Device "${name}" not found`);
-  devices.splice(idx, 1);
-  saveDevices(devices);
+  const result = stateDb.prepare("DELETE FROM devices WHERE name = ?").run(name);
+  if (result.changes === 0) throw new Error(`Device "${name}" not found`);
   log.info({ name }, "Device removed");
 }
 
@@ -122,9 +95,9 @@ export async function sendToDevice(
   file: Buffer,
   filename: string,
 ): Promise<void> {
-  const devices = loadDevices();
-  const device = devices.find(d => d.name === deviceName);
-  if (!device) throw new Error(`Device "${deviceName}" not found`);
+  const row = stateDb.prepare("SELECT id, name, type, credentials FROM devices WHERE name = ?").get(deviceName) as { id: string; name: string; type: string; credentials: string } | undefined;
+  if (!row) throw new Error(`Device "${deviceName}" not found`);
+  const device: DeviceInfo = { id: row.id, name: row.name, type: row.type, credentials: JSON.parse(row.credentials) };
 
   const provider = providers[device.type];
   if (!provider) throw new Error(`No provider for device type "${device.type}"`);
