@@ -18,7 +18,8 @@ import {
   verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
-import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appSearchPage } from "./templates.ts";
+import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appSearchPage, appDevicesPage } from "./templates.ts";
+import { listDevices, addDevice, verifyDevice, removeDevice } from "./devices/index.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
 
@@ -483,6 +484,52 @@ export function startServer(config: ServerConfig) {
       return;
     }
 
+    // Devices
+    if (req.method === "GET" && path === "/app/devices") {
+      const devices = listDevices();
+      sendHtml(res, appDevicesPage(devices));
+      return;
+    }
+
+    // Add device (step 1)
+    if (req.method === "POST" && path === "/app/devices/add") {
+      const body = await readBody(req);
+      const params = JSON.parse(body);
+      try {
+        const result = await addDevice(params.type, params.name, params.params ?? {});
+        json(res, result);
+      } catch (e: any) {
+        json(res, { error: e.message }, 400);
+      }
+      return;
+    }
+
+    // Verify device (step 2)
+    if (req.method === "POST" && path === "/app/devices/verify") {
+      const body = await readBody(req);
+      const params = JSON.parse(body);
+      try {
+        const device = await verifyDevice(params.name, params.params ?? {});
+        json(res, { name: device.name, type: device.type });
+      } catch (e: any) {
+        json(res, { error: e.message }, 400);
+      }
+      return;
+    }
+
+    // Remove device
+    if (req.method === "POST" && path === "/app/devices/remove") {
+      const body = await readBody(req);
+      const params = JSON.parse(body);
+      try {
+        removeDevice(params.name);
+        json(res, { ok: true });
+      } catch (e: any) {
+        json(res, { error: e.message }, 400);
+      }
+      return;
+    }
+
     // Book detail
     const bookMatch = path.match(/^\/app\/book\/(\d+)$/);
     if (req.method === "GET" && bookMatch) {
@@ -492,7 +539,34 @@ export function startServer(config: ServerConfig) {
         json(res, { error: "Book not found" }, 404);
         return;
       }
-      sendHtml(res, viewBookPage(book, "app"));
+      sendHtml(res, viewBookPage(book, "app", undefined, !!process.env.CONVERTER_URL));
+      return;
+    }
+
+    // Convert book format
+    const convertMatch = path.match(/^\/app\/book\/(\d+)\/convert$/);
+    if (req.method === "POST" && convertMatch) {
+      const bookId = parseInt(convertMatch[1], 10);
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      const toFormat = params.get("to_format")?.toUpperCase();
+      if (!toFormat) { json(res, { error: "to_format required" }, 400); return; }
+
+      const book = await storage.getBook(bookId);
+      if (!book) { json(res, { error: "Book not found" }, 404); return; }
+
+      const priority = ["EPUB", "MOBI", "AZW3", "LIT", "FB2", "RTF", "HTMLZ", "DOCX", "TXT", "PDF"];
+      const fromFormat = priority.find(f => (book.formats as string[]).includes(f)) ?? (book.formats as string[])[0];
+      if (!fromFormat) { json(res, { error: "No source format available" }, 400); return; }
+
+      try {
+        await storage.convertBook(bookId, fromFormat, toFormat);
+        const updated = await storage.getBook(bookId);
+        json(res, { formats: updated?.formats ?? [] });
+      } catch (e: any) {
+        log.error({ bookId, fromFormat, toFormat, err: e.message }, "Conversion failed");
+        json(res, { error: e.message }, 500);
+      }
       return;
     }
 

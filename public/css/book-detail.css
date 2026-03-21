@@ -88,6 +88,131 @@
   text-transform: uppercase;
 }
 
+/* --- Convert button --- */
+
+.convert-wrap {
+  position: relative;
+  margin-top: 10px;
+}
+
+.convert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(240,232,220,0.18);
+  background: transparent;
+  color: rgba(240,232,220,0.45);
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+
+.convert-btn:hover:not(:disabled) {
+  border-color: rgba(240,232,220,0.35);
+  color: rgba(240,232,220,0.75);
+}
+
+.convert-btn:disabled {
+  cursor: default;
+}
+
+.convert-btn.convert-error {
+  border-color: rgba(239,68,68,0.5);
+  color: rgba(239,68,68,0.7);
+}
+
+.btn-chevron {
+  transition: transform 150ms;
+  flex-shrink: 0;
+}
+.convert-btn[aria-expanded="true"] .btn-chevron {
+  transform: rotate(180deg);
+}
+
+/* Spinner shown during loading */
+.btn-spinner {
+  display: none;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid rgba(240,232,220,0.2);
+  border-top-color: rgba(240,232,220,0.6);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+.convert-btn.loading .btn-label,
+.convert-btn.loading .btn-chevron {
+  display: none;
+}
+.convert-btn.loading .btn-spinner {
+  display: block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Dropdown */
+.convert-dropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  background: #1a1714;
+  border: 1px solid rgba(240,232,220,0.15);
+  border-radius: 6px;
+  padding: 4px;
+  list-style: none;
+  margin: 0;
+  z-index: 10;
+  min-width: 120px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.convert-dropdown.open {
+  display: block;
+}
+
+.convert-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 7px 12px;
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(240,232,220,0.55);
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: var(--font);
+  transition: background 100ms, color 100ms;
+}
+
+.convert-option:hover {
+  background: rgba(240,232,220,0.07);
+  color: rgba(240,232,220,0.85);
+}
+
+/* New format pill entrance animation */
+@keyframes badge-appear {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.format-badge-new {
+  animation: badge-appear 250ms ease forwards;
+}
+
 .detail-series-label {
   font-size: 0.88em;
   color: #06b6d4;

@@ -30,6 +30,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --accent: #f59e0b;
   --accent-fg: #1c1917;
   --accent-subtle: rgba(245, 158, 11, 0.12);

@@ -448,8 +448,13 @@ export class LocalBackend implements StorageBackend {
 
     const inputExt = inputFmt.toLowerCase();
     const outputExt = outputFmt.toLowerCase();
-    const sourceData = await this.files.get(bookFilePath(row.path, inputExt));
-    if (!sourceData) throw new Error(`Format ${inputFmt} not found for book ${bookId}`);
+    const sourcePath = bookFilePath(row.path, inputExt);
+    log.info({ bookId, sourcePath }, "Fetching source file for conversion");
+    const sourceData = await this.files.get(sourcePath);
+    if (!sourceData) {
+      log.error({ bookId, sourcePath, inputFmt }, "Source file not found for conversion");
+      throw new Error(`Format ${inputFmt} not found for book ${bookId}`);
+    }
 
     // POST to ebook-converter-api
     const form = new FormData();

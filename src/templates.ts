@@ -40,6 +40,19 @@ function layout(title: SafeHTML | string, stylesheets: string[], body: SafeHTML,
 </html>`;
 }
 
+function sidebar(activePage?: string): SafeHTML {
+  const item = (href: string, page: string, icon: string, label: string) => {
+    const active = activePage === page ? " active" : "";
+    return unsafeHTML(`<a href="${href}" class="sidebar-item${active}">${icon}${label}</a>`);
+  };
+  const libraryIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`;
+  const devicesIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+  return html`<aside class="sidebar" id="sidebar"><nav class="sidebar-nav">
+    ${item("/app", "library", libraryIcon, "Library")}
+    ${item("/app/devices", "devices", devicesIcon, "Devices")}
+  </nav></aside>`;
+}
+
 function header(_activePage?: string): SafeHTML {
   return html`<header class="header">
     <div class="header-left">
@@ -75,6 +88,27 @@ document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key
   btn.addEventListener("click",function(e){e.stopPropagation();var open=drop.hidden;drop.hidden=!open;btn.setAttribute("aria-expanded",String(open));});
   document.addEventListener("click",function(){drop.hidden=true;btn.setAttribute("aria-expanded","false");});
 })();
+(function(){
+  function openModal(el){el.hidden=false;requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add("open");});});}
+  function closeModal(el){el.classList.remove("open");function h(){el.hidden=true;el.removeEventListener("transitionend",h);}el.addEventListener("transitionend",h);}
+  document.addEventListener("click",function(e){
+    var open=e.target.closest("[data-modal-open]");
+    if(open){var m=document.getElementById(open.dataset.modalOpen);if(m)openModal(m);}
+    if(e.target.closest("[data-modal-close]")){var b=e.target.closest(".modal-backdrop");if(b)closeModal(b);}
+    if(e.target.classList.contains("modal-backdrop"))closeModal(e.target);
+  });
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"){var m=document.querySelector(".modal-backdrop.open");if(m)closeModal(m);}});
+})();
+(function(){
+  var btn=document.getElementById("sidebar-toggle");
+  var overlay=document.getElementById("sidebar-overlay");
+  function closeSidebar(){document.body.classList.remove("sidebar-open");localStorage.setItem("sidebar","closed");}
+  if(btn)btn.addEventListener("click",function(){
+    var open=document.body.classList.toggle("sidebar-open");
+    localStorage.setItem("sidebar",open?"open":"closed");
+  });
+  if(overlay)overlay.addEventListener("click",closeSidebar);
+})();
 `;
 
 const VIEW_TOGGLE_MODULE = `
@@ -92,11 +126,20 @@ const VIEW_TOGGLE_MODULE = `
 `;
 
 function appLayout(title: SafeHTML | string, pageStyles: string[], body: SafeHTML, activePage?: string, extraModule?: string, bodyClass?: string): SafeHTML {
-  const stylesheets = ["/public/css/base.css", "/public/css/layout.css", ...pageStyles];
+  const stylesheets = ["/public/css/base.css", "/public/css/layout.css", "/public/css/modal.css", ...pageStyles];
   const headModule = APP_MODULE + (extraModule ?? "");
+  const sidebarScript = unsafeHTML(`<script>if(localStorage.getItem("sidebar")==="open")document.body.classList.add("sidebar-open");</script>`);
+  const toggleIcon = `<svg class="grid-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect class="grid-tl" x="3" y="3" width="8" height="8" rx="2"/><rect class="grid-tr" x="13" y="3" width="8" height="8" rx="2"/><rect class="grid-bl" x="3" y="13" width="8" height="8" rx="2"/><rect class="grid-br" x="13" y="13" width="8" height="8" rx="2"/></svg>`;
   const page = html`
+  ${sidebarScript}
   ${header(activePage)}
-  ${body}`;
+  ${sidebar(activePage)}
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <div class="main-wrap">
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">${unsafeHTML(toggleIcon)}</button>
+    ${body}
+    <footer class="app-footer"></footer>
+  </div>`;
   return layout(title, stylesheets, page, { scripts: ["https://unpkg.com/quicklink"], headModule, bodyClass });
 }
 
@@ -267,7 +310,22 @@ export function uploadPage(opts?: { success?: string; error?: string }): SafeHTM
 
 // --- Book detail page ---
 
-export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: string): SafeHTML {
+export function modal(id: string, title: string, body: SafeHTML, footer?: SafeHTML): SafeHTML {
+  return html`<div class="modal-backdrop" id="${id}" hidden>
+    <div class="modal" role="dialog" aria-labelledby="${id}-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="${id}-title">${title}</h2>
+        <button class="modal-close" data-modal-close aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">${body}</div>
+      ${footer ? html`<div class="modal-footer">${footer}</div>` : html``}
+    </div>
+  </div>`;
+}
+
+const SUPPORTED_FORMATS = ["EPUB", "MOBI", "TXT", "DOCX", "HTMLZ", "LRF"];
+
+export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: string, converterEnabled?: boolean): SafeHTML {
   const authors = (book.authors as string[])?.join(", ") ?? "";
   const tags = (book.tags as string[]) ?? [];
   const formats = (book.formats as string[]) ?? [];
@@ -336,7 +394,14 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
       : unsafeHTML("");
 
     const formatsBlock = formats.length
-      ? html`<div class="detail-formats">${unsafeHTML(formats.map((f: string) => `<span class="format-badge">${f}</span>`).join(""))}</div>`
+      ? html`<div class="detail-formats" id="book-formats">${unsafeHTML(formats.map((f: string) => `<span class="format-badge">${f}</span>`).join(""))}</div>`
+      : html`<div class="detail-formats" id="book-formats"></div>`;
+
+    const convertable = converterEnabled
+      ? SUPPORTED_FORMATS.filter(f => !formats.includes(f))
+      : [];
+    const convertBlock = convertable.length > 0
+      ? html`<div class="convert-wrap" id="convert-wrap"><button class="convert-btn" id="convert-btn" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span class="btn-label">Convert</span><span class="btn-spinner"></span><svg class="btn-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button><ul class="convert-dropdown" id="convert-dropdown" role="menu">${unsafeHTML(convertable.map(f => `<li><button class="convert-option" data-fmt="${f}">${f}</button></li>`).join(""))}</ul></div>`
       : html``;
 
     const detailBody = html`
@@ -345,6 +410,7 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     <div class="detail-col-left">
       ${coverImg}
       ${formatsBlock}
+      ${convertBlock}
     </div>
     <div class="detail-col-right">
       ${seriesLabel}
@@ -358,7 +424,8 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     </div>
   </div>`;
 
-    const scrollModule = `(function(){var h=document.querySelector('.header');if(!h)return;function u(){h.classList.toggle('opaque',window.scrollY>30);}window.addEventListener('scroll',u,{passive:true});u();})();(function(){var f=document.querySelector('.rating-form');if(!f)return;var btns=Array.from(f.querySelectorAll('.star-btn'));function applyRating(n){btns.forEach(function(b,j){var v=j+1;var filled=v<=n;b.classList.toggle('filled',filled);b.textContent=filled?'★':'☆';b.value=(v===n?0:v).toString();});}f.addEventListener('submit',function(e){e.preventDefault();var val=parseInt(e.submitter.value,10);fetch(f.action,{method:'POST',body:new URLSearchParams({rating:val})});applyRating(val>0?val:0);});btns.forEach(function(btn,i){btn.addEventListener('mouseenter',function(){btns.forEach(function(b,j){b.classList.toggle('preview',j<=i);});});btn.addEventListener('mouseleave',function(){btns.forEach(function(b){b.classList.remove('preview');});});});})();`;
+    const convertModule = converterEnabled ? `(function(){var wrap=document.getElementById('convert-wrap');var btn=document.getElementById('convert-btn');var dropdown=document.getElementById('convert-dropdown');if(!wrap||!btn||!dropdown)return;btn.addEventListener('click',function(e){e.stopPropagation();var open=dropdown.classList.toggle('open');btn.setAttribute('aria-expanded',open?'true':'false');});document.addEventListener('click',function(){dropdown.classList.remove('open');btn.setAttribute('aria-expanded','false');});dropdown.addEventListener('click',function(e){e.stopPropagation();var target=e.target.closest('[data-fmt]');if(!target)return;var toFmt=target.dataset.fmt;dropdown.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.disabled=true;btn.classList.add('loading');fetch(location.pathname+'/convert',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'to_format='+encodeURIComponent(toFmt)}).then(function(r){return r.json();}).then(function(data){if(data.error)throw new Error(data.error);var container=document.getElementById('book-formats');if(container){var pill=document.createElement('span');pill.className='format-badge format-badge-new';pill.textContent=toFmt;container.appendChild(pill);}var li=target.closest('li');if(li)li.remove();btn.disabled=false;btn.classList.remove('loading');if(!dropdown.querySelector('[data-fmt]')){wrap.style.display='none';}}).catch(function(){btn.disabled=false;btn.classList.remove('loading');btn.classList.add('convert-error');setTimeout(function(){btn.classList.remove('convert-error');},3000);});});})();` : "";
+    const scrollModule = `(function(){var h=document.querySelector('.header');if(!h)return;function u(){h.classList.toggle('opaque',window.scrollY>30);}window.addEventListener('scroll',u,{passive:true});u();})();(function(){var f=document.querySelector('.rating-form');if(!f)return;var btns=Array.from(f.querySelectorAll('.star-btn'));function applyRating(n){btns.forEach(function(b,j){var v=j+1;var filled=v<=n;b.classList.toggle('filled',filled);b.textContent=filled?'★':'☆';b.value=(v===n?0:v).toString();});}f.addEventListener('submit',function(e){e.preventDefault();var val=parseInt(e.submitter.value,10);fetch(f.action,{method:'POST',body:new URLSearchParams({rating:val})});applyRating(val>0?val:0);});btns.forEach(function(btn,i){btn.addEventListener('mouseenter',function(){btns.forEach(function(b,j){b.classList.toggle('preview',j<=i);});});btn.addEventListener('mouseleave',function(){btns.forEach(function(b){b.classList.remove('preview');});});});})();` + convertModule;
     return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", scrollModule, "book-detail-page");
   }
 
@@ -601,4 +668,188 @@ export function appSearchPage(query: string, books: BookSummary[], count: number
   </div>`;
 
   return appLayout(html`Search: ${query} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
+}
+
+export function appDevicesPage(devices: { id: string; name: string; type: string }[]): SafeHTML {
+  const rows = devices.map(d => {
+    const typeLabel = d.type.charAt(0).toUpperCase() + d.type.slice(1);
+    return html`<tr class="device-row" data-device-name="${d.name}">
+      <td class="col-device-name">${d.name}</td>
+      <td class="col-device-type">${typeLabel}</td>
+      <td class="col-device-actions"><button class="btn-remove-device" data-remove="${d.name}" aria-label="Remove ${d.name}">&times;</button></td>
+    </tr>`;
+  });
+
+  const table = devices.length
+    ? html`<table class="device-list" id="device-table">
+      <thead>
+        <tr class="list-header">
+          <th>Name</th>
+          <th>Type</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${unsafeHTML(rows.map(r => r.toString()).join(""))}
+      </tbody>
+    </table>`
+    : html`<p class="devices-empty" id="devices-empty">No devices configured.</p>`;
+
+  const addModal = modal("add-device-modal", "Add Device", html`
+    <form id="add-device-form" onsubmit="return false">
+    <div id="add-step-1">
+      <div class="modal-field">
+        <label class="modal-label" for="device-name">Name</label>
+        <input class="modal-input" id="device-name" placeholder="My Boox" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label class="modal-label" for="device-type">Type</label>
+        <select class="modal-select" id="device-type">
+          <option value="boox">Boox</option>
+          <option value="xteink">Xteink</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label" for="device-email">Email</label>
+        <input class="modal-input" id="device-email" type="email" autocomplete="off">
+      </div>
+      <div class="modal-field" id="field-region">
+        <label class="modal-label" for="device-region">Region</label>
+        <select class="modal-select" id="device-region">
+          <option value="us">US</option>
+          <option value="eu">EU</option>
+          <option value="cn">CN</option>
+        </select>
+      </div>
+      <div class="modal-field" id="field-password" hidden>
+        <label class="modal-label" for="device-password">Password</label>
+        <input class="modal-input" id="device-password" type="password">
+      </div>
+    </div>
+    <div id="add-step-2" hidden>
+      <p class="add-message" id="add-message"></p>
+      <div class="modal-field">
+        <label class="modal-label" for="device-code">Verification Code</label>
+        <input class="modal-input" id="device-code" autocomplete="off">
+      </div>
+    </div>
+    <p class="modal-error" id="add-error" hidden></p>
+    </form>
+  `, html`
+    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+    <button class="btn btn-primary" id="add-submit">Add Device</button>
+  `);
+
+  const removeModal = modal("remove-device-modal", "Remove Device", html`
+    <p>Are you sure you want to remove <strong id="remove-device-name"></strong>? This cannot be undone.</p>
+    <p class="modal-error" id="remove-error" hidden></p>
+  `, html`
+    <button class="btn btn-ghost" data-modal-close>Cancel</button>
+    <button class="btn btn-danger" id="remove-confirm">Remove</button>
+  `);
+
+  const body = html`
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">Devices <span class="page-count">${devices.length}</span></h1>
+      <button class="btn btn-primary" data-modal-open="add-device-modal">Add Device</button>
+    </div>
+    ${table}
+  </div>
+  ${addModal}
+  ${removeModal}`;
+
+  const devicesModule = `(function(){
+    var typeSelect=document.getElementById("device-type");
+    var regionField=document.getElementById("field-region");
+    var passwordField=document.getElementById("field-password");
+    if(typeSelect){typeSelect.addEventListener("change",function(){
+      var isBoox=typeSelect.value==="boox";
+      regionField.hidden=!isBoox;
+      passwordField.hidden=isBoox;
+    });}
+
+    var step1=document.getElementById("add-step-1");
+    var step2=document.getElementById("add-step-2");
+    var addBtn=document.getElementById("add-submit");
+    var addError=document.getElementById("add-error");
+    var addMsg=document.getElementById("add-message");
+    var currentStep=1;
+    var deviceName="";
+
+    if(addBtn)addBtn.addEventListener("click",function(){
+      addError.hidden=true;
+      if(currentStep===1){
+        deviceName=document.getElementById("device-name").value.trim();
+        var type=document.getElementById("device-type").value;
+        var email=document.getElementById("device-email").value.trim();
+        if(!deviceName||!email){addError.textContent="Name and email are required.";addError.hidden=false;return;}
+        var params={email:email};
+        if(type==="boox")params.region=document.getElementById("device-region").value;
+        else params.password=document.getElementById("device-password").value;
+        addBtn.disabled=true;addBtn.textContent="Connecting...";
+        fetch("/app/devices/add",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:type,name:deviceName,params:params})})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          addBtn.disabled=false;addBtn.textContent="Verify";
+          if(data.error){addError.textContent=data.error;addError.hidden=false;return;}
+          addMsg.textContent=data.message;
+          step1.hidden=true;step2.hidden=false;currentStep=2;
+        }).catch(function(e){addBtn.disabled=false;addBtn.textContent="Add Device";addError.textContent="Connection failed.";addError.hidden=false;});
+      }else{
+        var code=document.getElementById("device-code").value.trim();
+        if(!code){addError.textContent="Enter the verification code.";addError.hidden=false;return;}
+        addBtn.disabled=true;addBtn.textContent="Verifying...";
+        fetch("/app/devices/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:deviceName,params:{code:code}})})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          if(data.error){addBtn.disabled=false;addBtn.textContent="Verify";addError.textContent=data.error;addError.hidden=false;return;}
+          location.reload();
+        }).catch(function(e){addBtn.disabled=false;addBtn.textContent="Verify";addError.textContent="Verification failed.";addError.hidden=false;});
+      }
+    });
+
+    var addModal=document.getElementById("add-device-modal");
+    if(addModal){var obs=new MutationObserver(function(){
+      if(addModal.hidden){currentStep=1;step1.hidden=false;step2.hidden=true;
+        addBtn.textContent="Add Device";addBtn.disabled=false;addError.hidden=true;
+        document.getElementById("device-name").value="";document.getElementById("device-email").value="";
+        document.getElementById("device-code").value="";document.getElementById("device-password").value="";}
+    });obs.observe(addModal,{attributes:true,attributeFilter:["hidden"]});}
+
+    var removeName="";
+    document.addEventListener("click",function(e){
+      var btn=e.target.closest("[data-remove]");
+      if(btn){
+        removeName=btn.dataset.remove;
+        document.getElementById("remove-device-name").textContent=removeName;
+        var m=document.getElementById("remove-device-modal");
+        m.hidden=false;requestAnimationFrame(function(){requestAnimationFrame(function(){m.classList.add("open");});});
+      }
+    });
+
+    var removeBtn=document.getElementById("remove-confirm");
+    var removeError=document.getElementById("remove-error");
+    if(removeBtn)removeBtn.addEventListener("click",function(){
+      removeError.hidden=true;
+      removeBtn.disabled=true;removeBtn.textContent="Removing...";
+      fetch("/app/devices/remove",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:removeName})})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        removeBtn.disabled=false;removeBtn.textContent="Remove";
+        if(data.error){removeError.textContent=data.error;removeError.hidden=false;return;}
+        var row=document.querySelector('[data-device-name="'+CSS.escape(removeName)+'"]');
+        if(row)row.remove();
+        var m=document.getElementById("remove-device-modal");
+        m.classList.remove("open");m.addEventListener("transitionend",function h(){m.hidden=true;m.removeEventListener("transitionend",h);});
+        var tbody=document.querySelector("#device-table tbody");
+        if(tbody&&!tbody.children.length){
+          var table=document.getElementById("device-table");
+          if(table){table.remove();var p=document.createElement("p");p.className="devices-empty";p.textContent="No devices configured.";table.parentNode.appendChild(p);}
+        }
+      }).catch(function(e){removeBtn.disabled=false;removeBtn.textContent="Remove";removeError.textContent="Failed to remove device.";removeError.hidden=false;});
+    });
+  })();`;
+
+  return appLayout("Devices - Lyceum", ["/public/css/book-table.css", "/public/css/devices.css"], body, "devices", devicesModule, "cover-wall-page");
 }

@@ -1,0 +1,92 @@
+.device-list {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid rgba(240,232,220,0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 1.12em;
+}
+
+.device-list .list-header th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(240,232,220,0.4);
+  font-weight: 700;
+  background: rgba(240,232,220,0.05);
+  border-bottom: 2px solid rgba(240,232,220,0.15);
+  border-right: 1px solid rgba(240,232,220,0.08);
+  white-space: nowrap;
+}
+.device-list .list-header th:last-child { border-right: none; }
+
+.device-row td {
+  padding: 14px 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(240,232,220,0.08);
+  border-right: 1px solid rgba(240,232,220,0.06);
+}
+.device-row td:last-child { border-right: none; }
+.device-row:last-child td { border-bottom: none; }
+
+.device-row {
+  transition: background 150ms;
+}
+.device-row:hover { background: rgba(236,72,153,0.06); }
+
+.col-device-name {
+  font-family: var(--font-serif);
+  font-size: 1.05em;
+  font-weight: 700;
+  color: rgba(240,232,220,0.9);
+}
+.device-row:hover .col-device-name { color: #ec4899; }
+
+.col-device-type {
+  color: #06b6d4;
+  font-size: 0.82em;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.col-device-actions {
+  width: 40px;
+  text-align: center;
+}
+
+.btn-remove-device {
+  background: none;
+  border: none;
+  color: rgba(240,232,220,0.15);
+  font-size: 1.3em;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: color 150ms, background 150ms;
+  line-height: 1;
+}
+.btn-remove-device:hover {
+  color: #ef4444;
+  background: rgba(239,68,68,0.08);
+}
+
+.devices-empty {
+  color: rgba(240,232,220,0.4);
+  font-size: 1.1em;
+  padding: 40px 0;
+}
+
+.add-message {
+  color: #06b6d4;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.modal-error {
+  color: #ef4444;
+  font-size: 0.9em;
+  margin-top: 12px;
+}

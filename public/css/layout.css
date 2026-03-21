@@ -302,6 +302,117 @@
   border-color: #06b6d4;
 }
 
+.app-footer {
+  height: 80px;
+}
+
+/* --- Sidebar toggle button --- */
+
+.sidebar-toggle {
+  background: none;
+  border: none;
+  padding: 6px;
+  margin: 16px 0 0 30px;
+  cursor: pointer;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 150ms;
+}
+.sidebar-toggle:hover { color: #ec4899; }
+
+.grid-icon {
+  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+body.sidebar-open .grid-icon {
+  transform: rotate(45deg);
+}
+
+.grid-tl, .grid-tr, .grid-bl, .grid-br {
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sidebar-toggle:hover .grid-icon {
+  transform: rotate(8deg);
+}
+body.sidebar-open .sidebar-toggle:hover .grid-icon {
+  transform: rotate(53deg);
+}
+.sidebar-toggle:hover .grid-tl { transform: translate(-2px, -2px); }
+.sidebar-toggle:hover .grid-tr { transform: translate(2px, -2px); }
+.sidebar-toggle:hover .grid-bl { transform: translate(-2px, 2px); }
+.sidebar-toggle:hover .grid-br { transform: translate(2px, 2px); }
+
+/* --- Sidebar --- */
+
+.sidebar {
+  position: fixed;
+  top: 72px;
+  left: 0;
+  width: 220px;
+  height: calc(100vh - 72px);
+  background: transparent;
+  border-right: 2px solid rgba(240,232,220,0.07);
+  transform: translateX(-220px);
+  transition: transform 250ms ease;
+  z-index: 8;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+body.sidebar-open .sidebar {
+  transform: translateX(0);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  color: #06b6d4;
+  text-decoration: none;
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(240,232,220,0.06);
+  transition: background 150ms, color 150ms;
+}
+.sidebar-item:first-child {
+  border-top: 1px solid rgba(240,232,220,0.06);
+}
+.sidebar-item:hover {
+  background: rgba(236,72,153,0.06);
+  color: #ec4899;
+}
+.sidebar-item.active {
+  color: #fbbf24;
+  background: rgba(251,191,36,0.06);
+}
+
+/* --- Main wrap (pushed on desktop) --- */
+
+.main-wrap {
+  transition: margin-left 250ms ease;
+}
+
+body.sidebar-open .main-wrap {
+  margin-left: 220px;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    top: 64px;
+    height: calc(100vh - 64px);
+  }
+}
+
 @media (max-width: 768px) {
   .header { padding: 0 16px; height: 64px; }
   .container { padding: 24px 20px; }
