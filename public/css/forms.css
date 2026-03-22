@@ -228,5 +228,25 @@ body.login-page {
   color: #fff;
 }
 
+.upload-form button[type="submit"] {
+  position: relative;
+}
+.upload-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(10,9,8,0.2);
+  border-top-color: #0a0908;
+  border-radius: 50%;
+  animation: upload-spin 0.6s linear infinite;
+}
+@keyframes upload-spin { to { transform: rotate(360deg); } }
+.upload-form button.uploading .btn-text { display: none; }
+.upload-form button.uploading .upload-spinner { display: inline-block; }
+.upload-form button.uploading {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .upload-success { color: #4ade80; font-size: 0.9em; text-align: center; }
 .success { color: #4ade80; margin-top: 8px; }

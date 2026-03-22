@@ -265,13 +265,13 @@ export function addFormatPage(bookTitle: string, opts?: { success?: string; erro
         <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
         <span class="file-hint">epub, pdf, mobi, azw3, cbz, txt&hellip;</span>
       </label>
-      <button type="submit">Upload Format &rarr;</button>
+      <button type="submit"><span class="btn-text">Upload Format &rarr;</span><span class="upload-spinner"></span></button>
       ${message}
     </form>
   </div>`;
 
   return layout("Lyceum - Add Format", ["/public/css/base.css", "/public/css/book-detail.css", "/public/css/forms.css"], body, {
-    headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+    headModule: `document.documentElement.setAttribute("data-theme","dark");(function(){var f=document.querySelector('.upload-form');if(!f)return;f.addEventListener('submit',function(){var btn=f.querySelector('button[type="submit"]');btn.disabled=true;btn.classList.add('uploading');});})();`,
   });
 }
 
@@ -298,13 +298,13 @@ export function uploadPage(opts?: { success?: string; error?: string }): SafeHTM
         <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>
         <span class="file-hint">epub, pdf, mobi, azw3, cbz, txt&hellip;</span>
       </label>
-      <button type="submit">Upload &rarr;</button>
+      <button type="submit"><span class="btn-text">Upload &rarr;</span><span class="upload-spinner"></span></button>
       ${message}
     </form>
   </div>`;
 
   return layout("Lyceum - Upload Book", ["/public/css/base.css", "/public/css/book-detail.css", "/public/css/forms.css"], body, {
-    headModule: `document.documentElement.setAttribute("data-theme","dark")`,
+    headModule: `document.documentElement.setAttribute("data-theme","dark");(function(){var f=document.querySelector('.upload-form');if(!f)return;f.addEventListener('submit',function(){var btn=f.querySelector('button[type="submit"]');btn.disabled=true;btn.classList.add('uploading');});})();`,
   });
 }
 
