@@ -341,21 +341,21 @@ export function startServer(config: ServerConfig) {
     }
 
     if (req.method === "POST") {
-      const contentType = req.headers["content-type"] ?? "";
-      const body = await readBodyRaw(req);
-      const file = parseMultipart(body, contentType);
-
-      if (!file) {
-        sendHtml(res, addFormatPage(book.title, { error: "No file received." }), 400);
-        return;
-      }
-
       try {
+        const contentType = req.headers["content-type"] ?? "";
+        const body = await readBodyRaw(req);
+        const file = parseMultipart(body, contentType);
+
+        if (!file) {
+          sendHtml(res, addFormatPage(book.title, { error: "No file received." }), 400);
+          return;
+        }
+
         await storage.addFormat(bookId, file.filename, file.data);
         const ext = extname(file.filename).replace(/^\./, "").toUpperCase() || "file";
         sendHtml(res, addFormatPage(book.title, { success: `${ext} format added successfully.` }));
       } catch (e: any) {
-        log.error({ err: e, bookId, filename: file.filename }, "Add format failed");
+        log.error({ err: e, bookId }, "Add format failed");
         sendHtml(res, addFormatPage(book.title, { error: `Failed: ${e.message}` }), 500);
       }
       return;
@@ -377,20 +377,22 @@ export function startServer(config: ServerConfig) {
     }
 
     if (req.method === "POST") {
-      const contentType = req.headers["content-type"] ?? "";
-      const body = await readBodyRaw(req);
-      const file = parseMultipart(body, contentType);
-
-      if (!file) {
-        sendHtml(res, uploadPage({ error: "No file received." }), 400);
-        return;
-      }
-
+      let filename: string | undefined;
       try {
+        const contentType = req.headers["content-type"] ?? "";
+        const body = await readBodyRaw(req);
+        const file = parseMultipart(body, contentType);
+
+        if (!file) {
+          sendHtml(res, uploadPage({ error: "No file received." }), 400);
+          return;
+        }
+
+        filename = file.filename;
         const result = await storage.addBook(file.filename, file.data);
         sendHtml(res, uploadPage({ success: `Added "${result.title}" (ID: ${result.book_id})` }));
       } catch (e: any) {
-        log.error({ err: e, filename: file.filename }, "Upload failed");
+        log.error({ err: e, filename }, "Upload failed");
         sendHtml(res, uploadPage({ error: `Upload failed: ${e.message}` }), 500);
       }
       return;

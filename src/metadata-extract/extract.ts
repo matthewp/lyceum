@@ -1,5 +1,8 @@
 import { extname } from "node:path";
+import { logger as root } from "../logger.ts";
 import type { BookMetadata } from "./types.ts";
+
+const log = root.child({ module: "metadata-extract" });
 
 const EMPTY: BookMetadata = {
   title: null,
@@ -23,22 +26,27 @@ const EMPTY: BookMetadata = {
 export async function extractMetadata(data: Buffer, filename: string): Promise<BookMetadata> {
   const ext = extname(filename).toLowerCase();
 
-  switch (ext) {
-    case ".epub": {
-      const { extractEpub } = await import("./epub.ts");
-      return extractEpub(data);
+  try {
+    switch (ext) {
+      case ".epub": {
+        const { extractEpub } = await import("./epub.ts");
+        return extractEpub(data);
+      }
+      case ".pdf": {
+        const { extractPdf } = await import("./pdf.ts");
+        return extractPdf(data);
+      }
+      case ".mobi":
+      case ".azw3":
+      case ".azw": {
+        const { extractMobi } = await import("./mobi.ts");
+        return extractMobi(data);
+      }
+      default:
+        return { ...EMPTY };
     }
-    case ".pdf": {
-      const { extractPdf } = await import("./pdf.ts");
-      return extractPdf(data);
-    }
-    case ".mobi":
-    case ".azw3":
-    case ".azw": {
-      const { extractMobi } = await import("./mobi.ts");
-      return extractMobi(data);
-    }
-    default:
-      return { ...EMPTY };
+  } catch (e) {
+    log.error({ err: e, filename, format: ext }, "Metadata extraction failed, using empty metadata");
+    return { ...EMPTY };
   }
 }
