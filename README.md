@@ -4,10 +4,7 @@
 
 An MCP server for querying and managing an ebook library via chat. Works with [claude.ai](https://claude.ai) and [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
-Two storage backends are supported:
-
-- **Local** — self-contained SQLite + file storage, no external dependencies. Books are uploaded through the web UI.
-- **Calibre** — talks to a running [Calibre content server](https://manual.calibre-ebook.com/server.html) over HTTP. No direct database access or CLI tools needed.
+Self-contained with SQLite + file storage, no external dependencies. Books are uploaded through the web UI or via the MCP tools.
 
 ## Setup
 
@@ -20,53 +17,30 @@ npm install
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AUTH_PASSWORD` | Yes | — | Password for the OAuth authorization page |
-| `STORAGE_MODE` | No | `calibre` | Storage backend: `calibre` or `local` |
-| `DATA_DIR` | No | `/data` | Directory for local storage database and book files (`local` mode only) |
-| `CONVERTER_URL` | No | — | URL of an ebook converter API for format conversion (`local` mode only) |
-| `CONVERTER_API_KEY` | No | — | Bearer token for the converter API (`local` mode only) |
-| `CALIBRE_SERVER_URL` | No | `http://localhost:8080` | URL of the Calibre content server (`calibre` mode only) |
-| `CALIBRE_LIBRARY_ID` | No | — | Library ID for multi-library Calibre setups (`calibre` mode only) |
-| `CALIBRE_USERNAME` | No | — | Username for Calibre content server Digest auth (`calibre` mode only) |
-| `CALIBRE_PASSWORD` | No | — | Password for Calibre content server Digest auth (`calibre` mode only) |
+| `DATA_DIR` | No | `/data` | Directory for the database and book files |
+| `CONVERTER_URL` | No | — | URL of an ebook converter API for format conversion |
+| `CONVERTER_API_KEY` | No | — | Bearer token for the converter API |
 | `BASE_URL` | No | `http://localhost:3000` | Public URL of this server (used for OAuth redirects and signed URLs) |
 | `PORT` | No | `3000` | Port to listen on |
 
 ## Running
 
-### Local mode
-
 ```bash
-AUTH_PASSWORD=your-secret STORAGE_MODE=local DATA_DIR=./data npm run dev
+AUTH_PASSWORD=your-secret DATA_DIR=./data npm run dev
 ```
 
 For production:
 
 ```bash
 AUTH_PASSWORD=your-secret \
-  STORAGE_MODE=local \
   DATA_DIR=/var/lib/lyceum \
-  BASE_URL=https://lyceum.yourdomain.com \
-  npm start
-```
-
-### Calibre mode
-
-```bash
-AUTH_PASSWORD=your-secret npm run dev
-```
-
-For production:
-
-```bash
-AUTH_PASSWORD=your-secret \
-  CALIBRE_SERVER_URL=http://calibre:8080 \
   BASE_URL=https://lyceum.yourdomain.com \
   npm start
 ```
 
 ### Importing from Calibre
 
-To migrate an existing Calibre library into local storage, run the import script once before starting the server:
+To migrate an existing Calibre library into Lyceum, run the import script once before starting the server:
 
 ```bash
 CALIBRE_SERVER_URL=http://calibre:8080 \
@@ -91,12 +65,9 @@ podman run -d \
   -p 3009:3000 \
   -v lyceum-data:/data \
   -e AUTH_PASSWORD=your-secret \
-  -e STORAGE_MODE=local \
   -e BASE_URL=https://lyceum.yourdomain.com \
   ghcr.io/matthewp/lyceum:latest
 ```
-
-To use Calibre mode instead, swap `STORAGE_MODE=local` for `CALIBRE_SERVER_URL=http://calibre:8080`.
 
 To build from source instead, the included `Containerfile` uses `node:24-slim`. Node 24 supports native TypeScript type stripping, so no build step is needed — the source runs directly with `--experimental-strip-types`.
 
@@ -118,14 +89,12 @@ Secret=lyceum_auth_password,type=env,target=AUTH_PASSWORD
 
 ## Format Conversion
 
-The `convert_book` MCP tool converts a book from one format to another (e.g. EPUB to MOBI). In **local mode**, this requires an external converter service:
+The `convert_book` MCP tool converts a book from one format to another (e.g. EPUB to MOBI). This requires an external converter service:
 
 - `CONVERTER_URL` — base URL of the service (e.g. `http://converter:8080`)
 - `CONVERTER_API_KEY` — optional Bearer token
 
 The converter must accept `POST /convert` with a multipart form body containing a `file` field (the source file) and a `format` field (the target extension, e.g. `mobi`), and return the converted file as the response body.
-
-In **Calibre mode**, conversion is handled by the Calibre content server directly.
 
 ## MCP Tools
 
@@ -138,6 +107,7 @@ In **Calibre mode**, conversion is handled by the Calibre content server directl
 | `list_tags` | List all tags with book counts |
 | `list_series` | List all series with book counts |
 | `list_books_by_series` | List all books in a series, ordered by series index |
+| `list_books_by_author` | List all books by a specific author |
 | `get_view_link` | Get a signed URL to view a book's details page with cover and metadata (expires in 10 minutes) |
 | `get_download_link` | Get a signed download URL for a book file (expires in 5 minutes) |
 | `get_upload_link` | Get a signed URL to upload a book via browser (expires in 10 minutes) |
@@ -195,5 +165,3 @@ Device credentials are persisted to `lyceum.db` so they survive restarts.
 Lyceum uses OAuth 2.1 with dynamic client registration. When a client connects, it registers automatically, then the user authenticates with the `AUTH_PASSWORD`. Sessions are persisted to disk so they survive server restarts.
 
 Download and upload links use HMAC-SHA256 signed URLs so they can be opened in a browser without additional authentication.
-
-In Calibre mode, communication with the content server uses HTTP Digest authentication when `CALIBRE_USERNAME` and `CALIBRE_PASSWORD` are set.

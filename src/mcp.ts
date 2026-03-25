@@ -22,7 +22,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("list_books", {
-    description: "List books in the Calibre library, sorted by most recently added.",
+    description: "List books in the library, sorted by most recently added.",
     inputSchema: {
       limit: z.coerce.number().optional().describe("Max books to return (default 20)"),
       offset: z.coerce.number().optional().describe("Offset for pagination (default 0)"),
@@ -50,7 +50,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("search_books", {
-    description: "Search books by title, author, tag, or series name. Supports Calibre's search syntax (e.g. author:Asimov, tag:sci-fi).",
+    description: "Search books by title, author, tag, or series name. Supports search syntax (e.g. author:Asimov, tag:sci-fi).",
     inputSchema: {
       query: z.string().describe("Search query"),
       limit: z.coerce.number().optional().describe("Max results (default 20)"),
@@ -133,7 +133,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("get_upload_link", {
-    description: "Get a temporary upload link to add a book to the Calibre library. Returns a signed URL that opens a file upload form in the browser. The link expires in 10 minutes.",
+    description: "Get a temporary upload link to add a book to the library. Returns a signed URL that opens a file upload form in the browser. The link expires in 10 minutes.",
   }, async () => {
     const url = createSignedUrl(baseUrl, "/upload", 600);
     return {
@@ -170,7 +170,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("set_metadata", {
-    description: "Update metadata fields on a book in the Calibre library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
+    description: "Update metadata fields on a book in the library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
     inputSchema: {
       id: z.coerce.number().describe("The book ID"),
       fields: z.record(z.string(), z.unknown()).describe('Metadata fields to set (e.g. {"title": "New Title", "tags": ["fiction", "sci-fi"], "authors": ["Author Name"]})'),
@@ -210,7 +210,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("remove_book", {
-    description: "Permanently remove one or more books from the Calibre library. This cannot be undone.",
+    description: "Permanently remove one or more books from the library. This cannot be undone.",
     inputSchema: {
       ids: z.preprocess(
         (v) => typeof v === "string" ? JSON.parse(v) : v,
@@ -379,7 +379,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("send_to_device", {
-    description: "Send a book to an e-reader device. Downloads the book from the Calibre library and sends it to the specified device.",
+    description: "Send a book to an e-reader device. Downloads the book from the library and sends it to the specified device.",
     inputSchema: {
       device_name: z.string().describe("Name of the target device"),
       book_id: z.coerce.number().describe("The book ID"),
