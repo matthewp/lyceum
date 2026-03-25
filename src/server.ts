@@ -19,7 +19,17 @@ import {
   verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
-import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appAuthorPage, appSearchPage, appDevicesPage } from "./templates.ts";
+import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appAuthorPage, appSearchPage, appDevicesPage, appSettingsPage } from "./templates.ts";
+import {
+  verifyOpdsAuth, getOpdsSettings, setOpdsSettings,
+  rootFeed, recentFeed, authorsFeed, authorBooksFeed,
+  seriesFeed, seriesBooksFeed, tagsFeed, tagBooksFeed,
+  searchFeed, openSearchDescriptor,
+} from "./opds.ts";
+import {
+  verifyKosyncAuth, verifyKosyncCredentials, getKosyncSettings, setKosyncSettings,
+  getProgress, putProgress,
+} from "./kosync.ts";
 import { listDevices, addDevice, verifyDevice, removeDevice, sendToDevice } from "./devices/index.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
@@ -400,6 +410,189 @@ export function startServer(config: ServerConfig) {
     }
   }
 
+  // --- OPDS Catalog ---
+  if (path.startsWith("/opds")) {
+    if (!verifyOpdsAuth(req)) {
+      res.writeHead(401, {
+        "WWW-Authenticate": 'Basic realm="Lyceum OPDS"',
+        "Content-Type": "text/plain",
+      });
+      res.end("Unauthorized");
+      return;
+    }
+
+    const sendXml = (xml: string, kind: "navigation" | "acquisition" = "navigation") => {
+      res.writeHead(200, { "Content-Type": `application/atom+xml;profile=opds-catalog;kind=${kind}` });
+      res.end(xml);
+    };
+
+    if (req.method === "GET" && (path === "/opds" || path === "/opds/")) {
+      sendXml(rootFeed(BASE_URL));
+      return;
+    }
+
+    if (req.method === "GET" && path === "/opds/recent") {
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      sendXml(await recentFeed(BASE_URL, storage, page), "acquisition");
+      return;
+    }
+
+    if (req.method === "GET" && path === "/opds/authors") {
+      sendXml(await authorsFeed(BASE_URL, storage));
+      return;
+    }
+
+    const opdsAuthorMatch = path.match(/^\/opds\/author\/(.+)$/);
+    if (req.method === "GET" && opdsAuthorMatch) {
+      const author = decodeURIComponent(opdsAuthorMatch[1]);
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      sendXml(await authorBooksFeed(BASE_URL, storage, author, page), "acquisition");
+      return;
+    }
+
+    if (req.method === "GET" && path === "/opds/series") {
+      sendXml(await seriesFeed(BASE_URL, storage));
+      return;
+    }
+
+    const opdsSeriesMatch = path.match(/^\/opds\/series\/(\d+)$/);
+    if (req.method === "GET" && opdsSeriesMatch) {
+      const seriesId = parseInt(opdsSeriesMatch[1], 10);
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      const xml = await seriesBooksFeed(BASE_URL, storage, seriesId, page);
+      if (!xml) { json(res, { error: "Series not found" }, 404); return; }
+      sendXml(xml, "acquisition");
+      return;
+    }
+
+    if (req.method === "GET" && path === "/opds/tags") {
+      sendXml(await tagsFeed(BASE_URL, storage));
+      return;
+    }
+
+    const opdsTagMatch = path.match(/^\/opds\/tag\/(.+)$/);
+    if (req.method === "GET" && opdsTagMatch) {
+      const tag = decodeURIComponent(opdsTagMatch[1]);
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      sendXml(await tagBooksFeed(BASE_URL, storage, tag, page), "acquisition");
+      return;
+    }
+
+    if (req.method === "GET" && path === "/opds/search") {
+      const q = url.searchParams.get("q") ?? "";
+      if (!q) { json(res, { error: "query required" }, 400); return; }
+      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+      sendXml(await searchFeed(BASE_URL, storage, q, page), "acquisition");
+      return;
+    }
+
+    if (req.method === "GET" && path === "/opds/opensearch.xml") {
+      res.writeHead(200, { "Content-Type": "application/opensearchdescription+xml" });
+      res.end(openSearchDescriptor(BASE_URL));
+      return;
+    }
+
+    const opdsCoverMatch = path.match(/^\/opds\/cover\/(\d+)$/);
+    if (req.method === "GET" && opdsCoverMatch) {
+      const bookId = parseInt(opdsCoverMatch[1], 10);
+      const coverBuf = await storage.getBookCover(bookId);
+      if (!coverBuf) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, {
+        "Content-Type": "image/jpeg",
+        "Content-Length": String(coverBuf.byteLength),
+        "Cache-Control": "public, max-age=86400",
+      });
+      res.end(coverBuf);
+      return;
+    }
+
+    const opdsDownloadMatch = path.match(/^\/opds\/download\/(\d+)\/(.+)$/);
+    if (req.method === "GET" && opdsDownloadMatch) {
+      const bookId = parseInt(opdsDownloadMatch[1], 10);
+      const format = decodeURIComponent(opdsDownloadMatch[2]).toUpperCase();
+      try {
+        const downloadPath = storage.bookDownloadPath(format, bookId);
+        const upstream = await storage.downloadBook(downloadPath);
+        if (!upstream.ok) { res.writeHead(upstream.status); res.end(); return; }
+        const headers: Record<string, string> = {};
+        const ct = upstream.headers.get("content-type");
+        if (ct) headers["Content-Type"] = ct;
+        const cd = upstream.headers.get("content-disposition");
+        if (cd) headers["Content-Disposition"] = cd;
+        const cl = upstream.headers.get("content-length");
+        if (cl) headers["Content-Length"] = cl;
+        res.writeHead(200, headers);
+        const body = new Uint8Array(await upstream.arrayBuffer());
+        res.end(body);
+      } catch (e: any) {
+        log.error({ err: e, bookId, format }, "OPDS download failed");
+        json(res, { error: e.message }, 500);
+      }
+      return;
+    }
+
+    json(res, { error: "Not found" }, 404);
+    return;
+  }
+
+  // --- KOSync (KOReader Progress Sync) ---
+  if (path.startsWith("/kosync/")) {
+    const kosyncSettings = getKosyncSettings();
+
+    // PUT /kosync/users/create
+    if (req.method === "PUT" && path === "/kosync/users/create") {
+      if (!kosyncSettings.enabled) { json(res, { message: "KOSync is not enabled" }, 403); return; }
+      const body = JSON.parse(await readBody(req));
+      const { username, password } = body;
+      if (!username || !password) { json(res, { message: "Missing username or password" }, 400); return; }
+      if (verifyKosyncCredentials(username, password)) {
+        json(res, { username }, 201);
+      } else {
+        json(res, { message: "Forbidden" }, 403);
+      }
+      return;
+    }
+
+    // GET /kosync/users/auth
+    if (req.method === "GET" && path === "/kosync/users/auth") {
+      const auth = verifyKosyncAuth(req);
+      if (!auth.ok) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ authorized: "DENIED" }));
+        return;
+      }
+      json(res, { authorized: "OK" });
+      return;
+    }
+
+    // PUT /kosync/syncs/progress
+    if (req.method === "PUT" && path === "/kosync/syncs/progress") {
+      const auth = verifyKosyncAuth(req);
+      if (!auth.ok) { json(res, { authorized: "DENIED" }, 401); return; }
+      const body = JSON.parse(await readBody(req));
+      const { document, progress, percentage, device, device_id } = body;
+      if (!document || !progress) { json(res, { message: "Missing required fields" }, 400); return; }
+      const timestamp = putProgress(auth.username!, document, progress, percentage ?? 0, device ?? "", device_id ?? "");
+      json(res, { document, timestamp });
+      return;
+    }
+
+    // GET /kosync/syncs/progress/:document
+    const progressMatch = path.match(/^\/kosync\/syncs\/progress\/(.+)$/);
+    if (req.method === "GET" && progressMatch) {
+      const auth = verifyKosyncAuth(req);
+      if (!auth.ok) { json(res, { authorized: "DENIED" }, 401); return; }
+      const document = decodeURIComponent(progressMatch[1]);
+      const record = getProgress(auth.username!, document);
+      if (!record) { json(res, {}); return; }
+      json(res, record);
+      return;
+    }
+
+    json(res, { error: "Not found" }, 404);
+    return;
+  }
+
   // --- App: Login ---
   if (path === "/app/login") {
     if (req.method === "GET") {
@@ -541,6 +734,75 @@ export function startServer(config: ServerConfig) {
       } catch (e: any) {
         json(res, { error: e.message }, 400);
       }
+      return;
+    }
+
+    // Settings
+    if (req.method === "GET" && path === "/app/settings") {
+      const opds = getOpdsSettings();
+      const kosync = getKosyncSettings();
+      sendHtml(res, appSettingsPage({
+        opdsEnabled: opds.enabled, opdsUsername: opds.username, opdsUrl: `${BASE_URL}/opds/`,
+        kosyncEnabled: kosync.enabled, kosyncUsername: kosync.username, kosyncUrl: `${BASE_URL}/kosync`,
+      }));
+      return;
+    }
+
+    if (req.method === "POST" && path === "/app/settings/opds") {
+      const body = new URLSearchParams(await readBody(req));
+      const enabled = body.get("enabled") === "true";
+      const username = body.get("username") ?? "";
+      const password = body.get("password") ?? "";
+
+      const current = getOpdsSettings();
+      const kosync = getKosyncSettings();
+      const updates: { enabled?: boolean; username?: string; password?: string } = { enabled };
+      const settingsBase = { kosyncEnabled: kosync.enabled, kosyncUsername: kosync.username, kosyncUrl: `${BASE_URL}/kosync` };
+
+      if (username) updates.username = username;
+      if (password) updates.password = password;
+
+      if (enabled && !current.hasPassword && !password) {
+        sendHtml(res, appSettingsPage({ opdsEnabled: current.enabled, opdsUsername: current.username, opdsUrl: `${BASE_URL}/opds/`, ...settingsBase, error: "Password is required to enable OPDS." }));
+        return;
+      }
+      if (enabled && !current.username && !username) {
+        sendHtml(res, appSettingsPage({ opdsEnabled: current.enabled, opdsUsername: current.username, opdsUrl: `${BASE_URL}/opds/`, ...settingsBase, error: "Username is required to enable OPDS." }));
+        return;
+      }
+
+      setOpdsSettings(updates);
+      const updated = getOpdsSettings();
+      sendHtml(res, appSettingsPage({ opdsEnabled: updated.enabled, opdsUsername: updated.username, opdsUrl: `${BASE_URL}/opds/`, ...settingsBase, success: "OPDS settings saved." }));
+      return;
+    }
+
+    if (req.method === "POST" && path === "/app/settings/kosync") {
+      const body = new URLSearchParams(await readBody(req));
+      const enabled = body.get("enabled") === "true";
+      const username = body.get("username") ?? "";
+      const password = body.get("password") ?? "";
+
+      const current = getKosyncSettings();
+      const opds = getOpdsSettings();
+      const updates: { enabled?: boolean; username?: string; password?: string } = { enabled };
+      const settingsBase = { opdsEnabled: opds.enabled, opdsUsername: opds.username, opdsUrl: `${BASE_URL}/opds/` };
+
+      if (username) updates.username = username;
+      if (password) updates.password = password;
+
+      if (enabled && !current.hasPassword && !password) {
+        sendHtml(res, appSettingsPage({ kosyncEnabled: current.enabled, kosyncUsername: current.username, kosyncUrl: `${BASE_URL}/kosync`, ...settingsBase, error: "Password is required to enable KOSync." }));
+        return;
+      }
+      if (enabled && !current.username && !username) {
+        sendHtml(res, appSettingsPage({ kosyncEnabled: current.enabled, kosyncUsername: current.username, kosyncUrl: `${BASE_URL}/kosync`, ...settingsBase, error: "Username is required to enable KOSync." }));
+        return;
+      }
+
+      setKosyncSettings(updates);
+      const updated = getKosyncSettings();
+      sendHtml(res, appSettingsPage({ kosyncEnabled: updated.enabled, kosyncUsername: updated.username, kosyncUrl: `${BASE_URL}/kosync`, ...settingsBase, success: "KOSync settings saved." }));
       return;
     }
 

@@ -24,6 +24,27 @@ CREATE TABLE IF NOT EXISTS devices (
   type TEXT NOT NULL,
   credentials TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS opds_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS kosync_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS kosync_progress (
+  document TEXT NOT NULL,
+  username TEXT NOT NULL,
+  progress TEXT NOT NULL,
+  percentage REAL NOT NULL,
+  device TEXT NOT NULL,
+  device_id TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  PRIMARY KEY (document, username)
+);
 `;
 
 const dataDir = process.env.DATA_DIR ?? "/data";

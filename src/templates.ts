@@ -47,9 +47,11 @@ function sidebar(activePage?: string): SafeHTML {
   };
   const libraryIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`;
   const devicesIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+  const settingsIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
   return html`<aside class="sidebar" id="sidebar"><nav class="sidebar-nav">
     ${item("/app", "library", libraryIcon, "Library")}
     ${item("/app/devices", "devices", devicesIcon, "Devices")}
+    ${item("/app/settings", "settings", settingsIcon, "Settings")}
   </nav></aside>`;
 }
 
@@ -966,4 +968,68 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
   })();`;
 
   return appLayout("Devices - Lyceum", ["/public/css/book-table.css", "/public/css/devices.css"], body, "devices", devicesModule, "cover-wall-page");
+}
+
+export function appSettingsPage(opts: {
+  opdsEnabled: boolean;
+  opdsUsername: string | null;
+  opdsUrl: string;
+  kosyncEnabled: boolean;
+  kosyncUsername: string | null;
+  kosyncUrl: string;
+  success?: string;
+  error?: string;
+}): SafeHTML {
+  const flash = opts.success
+    ? html`<div class="settings-success">${opts.success}</div>`
+    : opts.error
+    ? html`<div class="settings-error">${opts.error}</div>`
+    : html``;
+
+  const body = html`<main class="main-content" style="padding: 32px;">
+    <h1 style="font-family: var(--font-serif); font-size: 2.2em; font-weight: 800; color: #f0e8dc; margin-bottom: 32px;">Settings</h1>
+    ${flash}
+    <section class="settings-section">
+      <h2 class="settings-heading">OPDS Catalog</h2>
+      <p class="settings-sub">Enable OPDS to let e-reader apps browse and download books from your library. Configure a username and password that you'll enter in your reader app.</p>
+      ${opts.opdsEnabled ? html`<p class="settings-opds-url">${opts.opdsUrl}</p>` : html``}
+      <form method="POST" action="/app/settings/opds" class="settings-form">
+        <label class="settings-toggle">
+          <input type="checkbox" name="enabled" value="true" ${unsafeHTML(opts.opdsEnabled ? 'checked' : '')}>
+          <span class="settings-toggle-label">Enable OPDS feeds</span>
+        </label>
+        <div class="settings-field">
+          <label class="settings-label" for="opds-username">Username</label>
+          <input class="settings-input" id="opds-username" name="username" type="text" value="${opts.opdsUsername ?? ""}" placeholder="lyceum" autocomplete="off">
+        </div>
+        <div class="settings-field">
+          <label class="settings-label" for="opds-password">Password</label>
+          <input class="settings-input" id="opds-password" name="password" type="password" placeholder="${unsafeHTML(opts.opdsEnabled ? 'Leave blank to keep current' : 'Set a password')}" autocomplete="new-password">
+        </div>
+        <button type="submit" class="settings-submit">Save</button>
+      </form>
+    </section>
+    <section class="settings-section">
+      <h2 class="settings-heading">KOSync (Reading Progress)</h2>
+      <p class="settings-sub">Enable KOSync to sync reading position across KOReader devices. Configure a username and password that you'll enter in KOReader's progress sync settings.</p>
+      ${opts.kosyncEnabled ? html`<p class="settings-opds-url">${opts.kosyncUrl}</p>` : html``}
+      <form method="POST" action="/app/settings/kosync" class="settings-form">
+        <label class="settings-toggle">
+          <input type="checkbox" name="enabled" value="true" ${unsafeHTML(opts.kosyncEnabled ? 'checked' : '')}>
+          <span class="settings-toggle-label">Enable KOSync</span>
+        </label>
+        <div class="settings-field">
+          <label class="settings-label" for="kosync-username">Username</label>
+          <input class="settings-input" id="kosync-username" name="username" type="text" value="${opts.kosyncUsername ?? ""}" placeholder="reader" autocomplete="off">
+        </div>
+        <div class="settings-field">
+          <label class="settings-label" for="kosync-password">Password</label>
+          <input class="settings-input" id="kosync-password" name="password" type="password" placeholder="${unsafeHTML(opts.kosyncEnabled ? 'Leave blank to keep current' : 'Set a password')}" autocomplete="new-password">
+        </div>
+        <button type="submit" class="settings-submit">Save</button>
+      </form>
+    </section>
+  </main>`;
+
+  return appLayout("Settings - Lyceum", ["/public/css/settings.css"], body, "settings");
 }

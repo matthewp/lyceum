@@ -1,0 +1,125 @@
+.settings-section {
+  margin-bottom: 40px;
+}
+
+.settings-heading {
+  font-family: var(--font-serif);
+  font-size: 1.5em;
+  font-weight: 700;
+  color: rgba(240,232,220,0.9);
+  margin-bottom: 8px;
+}
+
+.settings-sub {
+  color: rgba(240,232,220,0.4);
+  font-size: 0.9em;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 400px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-label {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: rgba(240,232,220,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-input {
+  padding: 10px 14px;
+  font-size: 1em;
+  font-family: var(--font);
+  border: 2px solid rgba(240,232,220,0.15);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(240,232,220,0.9);
+  outline: none;
+  transition: border-color 150ms, background 150ms;
+}
+.settings-input::placeholder {
+  color: rgba(240,232,220,0.25);
+}
+.settings-input:focus {
+  border-color: #06b6d4;
+  background: rgba(6,182,212,0.04);
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.settings-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #06b6d4;
+  cursor: pointer;
+}
+
+.settings-toggle-label {
+  font-size: 0.95em;
+  color: rgba(240,232,220,0.8);
+}
+
+.settings-submit {
+  padding: 10px 24px;
+  font-size: 1em;
+  font-family: var(--font);
+  font-weight: 700;
+  background: #fbbf24;
+  color: #0a0908;
+  border: 2px solid #fbbf24;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms;
+  align-self: flex-start;
+}
+.settings-submit:hover {
+  background: #ec4899;
+  border-color: #ec4899;
+  color: #fff;
+}
+
+.settings-success {
+  color: #4ade80;
+  font-size: 0.9em;
+  padding: 10px 14px;
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 8px;
+  background: rgba(74,222,128,0.06);
+}
+
+.settings-error {
+  color: #f87171;
+  font-size: 0.9em;
+  padding: 10px 14px;
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 8px;
+  background: rgba(248,113,113,0.06);
+}
+
+.settings-opds-url {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: #06b6d4;
+  background: rgba(6,182,212,0.08);
+  padding: 8px 12px;
+  border-radius: 6px;
+  word-break: break-all;
+  margin-bottom: 16px;
+}

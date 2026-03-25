@@ -166,7 +166,7 @@ export class LocalBackend implements StorageBackend {
 
   async listSeries(): Promise<CategoryItem[]> {
     return this.db.prepare(`
-      SELECT s.name, COUNT(b.id) as count
+      SELECT s.id, s.name, COUNT(b.id) as count
       FROM series s
       JOIN books b ON b.series_id = s.id
       GROUP BY s.id

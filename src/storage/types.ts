@@ -37,6 +37,7 @@ export interface BookDetail {
 }
 
 export interface CategoryItem {
+  id?: number;
   name: string;
   count: number;
 }

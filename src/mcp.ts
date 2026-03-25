@@ -10,6 +10,8 @@ import {
   removeDevice,
   sendToDevice,
 } from "./devices/index.ts";
+import { getOpdsSettings, setOpdsSettings } from "./opds.ts";
+import { getKosyncSettings, setKosyncSettings } from "./kosync.ts";
 
 export function createMcpServer(storage: StorageBackend, baseUrl: string): McpServer {
   const server = new McpServer({
@@ -293,6 +295,80 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
       }
       return {
         content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  // --- OPDS settings tools ---
+
+  server.registerTool("get_opds_settings", {
+    description: "Get current OPDS catalog settings (enabled status, username, catalog URL).",
+  }, async () => {
+    const settings = getOpdsSettings();
+    return {
+      content: [{ type: "text", text: JSON.stringify({ ...settings, url: `${baseUrl}/opds/` }, null, 2) }],
+    };
+  });
+
+  server.registerTool("set_opds_settings", {
+    description: "Configure OPDS catalog settings. Set enabled, username, and/or password for OPDS Basic Auth. Reader apps use these credentials to browse and download books.",
+    inputSchema: {
+      enabled: z.boolean().optional().describe("Enable or disable OPDS feeds"),
+      username: z.string().optional().describe("Username for OPDS Basic Auth"),
+      password: z.string().optional().describe("Password for OPDS Basic Auth"),
+    },
+  }, async ({ enabled, username, password }) => {
+    try {
+      const updates: { enabled?: boolean; username?: string; password?: string } = {};
+      if (enabled !== undefined) updates.enabled = enabled;
+      if (username !== undefined) updates.username = username;
+      if (password !== undefined) updates.password = password;
+      setOpdsSettings(updates);
+      const current = getOpdsSettings();
+      return {
+        content: [{ type: "text", text: `OPDS settings updated. Enabled: ${current.enabled}, Username: ${current.username ?? "(not set)"}, URL: ${baseUrl}/opds/` }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  // --- KOSync settings tools ---
+
+  server.registerTool("get_kosync_settings", {
+    description: "Get current KOSync (KOReader reading progress sync) settings.",
+  }, async () => {
+    const settings = getKosyncSettings();
+    return {
+      content: [{ type: "text", text: JSON.stringify({ ...settings, url: `${baseUrl}/kosync` }, null, 2) }],
+    };
+  });
+
+  server.registerTool("set_kosync_settings", {
+    description: "Configure KOSync settings. Set enabled, username, and/or password for KOReader reading progress sync.",
+    inputSchema: {
+      enabled: z.boolean().optional().describe("Enable or disable KOSync"),
+      username: z.string().optional().describe("Username for KOSync auth"),
+      password: z.string().optional().describe("Password for KOSync auth"),
+    },
+  }, async ({ enabled, username, password }) => {
+    try {
+      const updates: { enabled?: boolean; username?: string; password?: string } = {};
+      if (enabled !== undefined) updates.enabled = enabled;
+      if (username !== undefined) updates.username = username;
+      if (password !== undefined) updates.password = password;
+      setKosyncSettings(updates);
+      const current = getKosyncSettings();
+      return {
+        content: [{ type: "text", text: `KOSync settings updated. Enabled: ${current.enabled}, Username: ${current.username ?? "(not set)"}, URL: ${baseUrl}/kosync` }],
       };
     } catch (e: any) {
       return {
