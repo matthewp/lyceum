@@ -6,7 +6,7 @@ const ESC: Record<string, string> = {
   "'": "&#39;",
 };
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (ch) => ESC[ch]);
 }
 

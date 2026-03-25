@@ -282,6 +282,11 @@ export class CalibreBackend implements StorageBackend {
     }));
   }
 
+  async listBooksByAuthor(author: string, opts: { limit?: number; offset?: number } = {}) {
+    const result = await this.searchBooks(`authors:"=${author}"`, opts);
+    return { books: result.results, total: result.count };
+  }
+
   async listBooksByTag(tag: string, opts: { limit?: number; offset?: number } = {}) {
     const result = await this.searchBooks(`tags:"=${tag}"`, opts);
     return { books: result.results, total: result.count };

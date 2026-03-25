@@ -1,4 +1,4 @@
-import { html, unsafeHTML, UnsafeHTML, SafeHTML } from "./html.ts";
+import { html, unsafeHTML, UnsafeHTML, SafeHTML, escapeHtml } from "./html.ts";
 import type { BookSummary } from "./storage/types.ts";
 
 function cssLinks(paths: string[]): UnsafeHTML {
@@ -326,7 +326,10 @@ export function modal(id: string, title: string, body: SafeHTML, footer?: SafeHT
 const SUPPORTED_FORMATS = ["EPUB", "MOBI", "TXT", "DOCX", "HTMLZ", "LRF"];
 
 export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: string, converterEnabled?: boolean): SafeHTML {
-  const authors = (book.authors as string[])?.join(", ") ?? "";
+  const authorNames = (book.authors as string[]) ?? [];
+  const authors = mode === "app"
+    ? unsafeHTML(authorNames.map(a => `<a href="/app/author/${encodeURIComponent(a)}">${escapeHtml(a)}</a>`).join(", "))
+    : html`${authorNames.join(", ")}`;
   const tags = (book.tags as string[]) ?? [];
   const formats = (book.formats as string[]) ?? [];
   const languages = (book.languages as string[]) ?? [];
@@ -574,7 +577,7 @@ function bookList(books: BookSummary[]): SafeHTML {
         <a class="row-title" href="/app/book/${book.id}" style="view-transition-name: title-${book.id};">${book.title}</a>
         ${seriesCell}
       </td>
-      <td class="col-author">${book.authors.join(", ")}</td>
+      <td class="col-author">${unsafeHTML(book.authors.map((a: string) => `<a href="/app/author/${encodeURIComponent(a)}">${escapeHtml(a)}</a>`).join(", "))}</td>
       <td class="col-year">${yearStr}</td>
       <td class="col-tags"><div class="tag-list">${unsafeHTML(tagPills.map((p: SafeHTML) => p.toString()).join(""))}</div></td>
       <td class="col-format">${formats}</td>
@@ -640,6 +643,21 @@ export function appTagPage(tag: string, books: BookSummary[], total: number, pag
   </div>`;
 
   return appLayout(html`${tag} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
+}
+
+export function appAuthorPage(author: string, books: BookSummary[], total: number, page: number, perPage: number): SafeHTML {
+  const basePath = `/app/author/${encodeURIComponent(author)}`;
+  const body = html`
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">${author} <span class="page-count">${total} books</span></h1>
+      ${viewToggleButtons()}
+    </div>
+    ${booksContainer(books)}
+    ${pagination(page, perPage, total, basePath)}
+  </div>`;
+
+  return appLayout(html`${author} - Lyceum`, ["/public/css/book-table.css"], body, "library", VIEW_TOGGLE_MODULE, "cover-wall-page");
 }
 
 export function appSeriesPage(seriesName: string, books: BookSummary[], total: number, page: number, perPage: number): SafeHTML {

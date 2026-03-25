@@ -105,6 +105,20 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
     };
   });
 
+  server.registerTool("list_books_by_author", {
+    description: "List all books by a specific author.",
+    inputSchema: {
+      author: z.string().describe("The author name (exact match)"),
+      limit: z.coerce.number().optional().describe("Max books to return (default 20)"),
+      offset: z.coerce.number().optional().describe("Offset for pagination (default 0)"),
+    },
+  }, async ({ author, limit, offset }) => {
+    const { books, total } = await storage.listBooksByAuthor(author, { limit: limit ?? 20, offset: offset ?? 0 });
+    return {
+      content: [{ type: "text", text: JSON.stringify({ author, total, books }, null, 2) }],
+    };
+  });
+
   server.registerTool("get_download_link", {
     description: "Get a temporary download link for a book file. Returns a signed URL that expires in 5 minutes.",
     inputSchema: {

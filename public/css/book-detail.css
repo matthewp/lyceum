@@ -246,6 +246,16 @@
   font-weight: 400;
 }
 
+.detail-author a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.detail-author a:hover {
+  color: rgba(245,240,235,0.9);
+}
+
 .detail-meta-row {
   font-size: 0.95em;
   color: rgba(245,240,235,0.4);

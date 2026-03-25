@@ -143,6 +143,27 @@ export class LocalBackend implements StorageBackend {
     return { books: rows.map(row => this.rowToSummary(row)), total };
   }
 
+  async listBooksByAuthor(author: string, opts: { limit?: number; offset?: number } = {}) {
+    const limit = opts.limit ?? 100;
+    const offset = opts.offset ?? 0;
+
+    const total = (this.db.prepare(`
+      SELECT COUNT(*) as count FROM book_authors ba
+      JOIN authors a ON a.id = ba.author_id WHERE a.name = ?
+    `).get(author) as { count: number }).count;
+
+    const rows = this.db.prepare(`
+      SELECT b.*, s.name as series_name FROM books b
+      LEFT JOIN series s ON b.series_id = s.id
+      JOIN book_authors ba ON ba.book_id = b.id
+      JOIN authors a ON a.id = ba.author_id
+      WHERE a.name = ?
+      ORDER BY NULLIF(b.created_at, 'None') DESC NULLS LAST LIMIT ? OFFSET ?
+    `).all(author, limit, offset) as BookRow[];
+
+    return { books: rows.map(row => this.rowToSummary(row)), total };
+  }
+
   async listSeries(): Promise<CategoryItem[]> {
     return this.db.prepare(`
       SELECT s.name, COUNT(b.id) as count

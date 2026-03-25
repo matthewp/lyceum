@@ -57,6 +57,7 @@ export interface StorageBackend {
   listSeries(): Promise<CategoryItem[]>;
   listBooksByTag(tag: string, opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number }>;
   listBooksBySeries(seriesId: number, opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number; seriesName: string | null }>;
+  listBooksByAuthor(author: string, opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number }>;
 
   // Write
   addBook(filename: string, data: Buffer): Promise<AddBookResult>;
