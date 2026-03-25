@@ -325,7 +325,7 @@ export function modal(id: string, title: string, body: SafeHTML, footer?: SafeHT
 
 const SUPPORTED_FORMATS = ["EPUB", "MOBI", "TXT", "DOCX", "HTMLZ", "LRF"];
 
-export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: string, converterEnabled?: boolean): SafeHTML {
+export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: string, converterEnabled?: boolean, deviceNames?: string[]): SafeHTML {
   const authorNames = (book.authors as string[]) ?? [];
   const authors = mode === "app"
     ? unsafeHTML(authorNames.map(a => `<a href="/app/author/${encodeURIComponent(a)}">${escapeHtml(a)}</a>`).join(", "))
@@ -397,8 +397,32 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
       : unsafeHTML("");
 
     const formatsBlock = formats.length
-      ? html`<div class="detail-formats" id="book-formats">${unsafeHTML(formats.map((f: string) => `<span class="format-badge">${f}</span>`).join(""))}</div>`
+      ? html`<div class="detail-formats" id="book-formats">${unsafeHTML(formats.map((f: string) => `<button class="format-badge format-badge-btn" data-format="${f}">${f}</button>`).join(""))}</div>`
       : html`<div class="detail-formats" id="book-formats"></div>`;
+
+    const devices = deviceNames ?? [];
+    const deviceOptions = devices.length
+      ? unsafeHTML(devices.map(d => `<button class="fmt-action-btn" data-send-device="${escapeHtml(d)}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>Send to ${escapeHtml(d)}</button>`).join(""))
+      : unsafeHTML("");
+    const formatModal = modal("format-modal", "", html`
+      <div id="fmt-step-actions">
+        <div class="fmt-action-list">
+          <a class="fmt-action-btn" id="fmt-download" href="#"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</a>
+          ${deviceOptions}
+          <button class="fmt-action-btn fmt-action-danger" id="fmt-remove-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Remove format</button>
+        </div>
+        <p class="fmt-send-status" id="fmt-send-status" hidden></p>
+      </div>
+      <div id="fmt-step-confirm" hidden>
+        <p>Are you sure you want to remove <strong id="fmt-confirm-name"></strong> from this book? This cannot be undone.</p>
+        <div class="fmt-confirm-buttons">
+          <button class="btn btn-ghost" id="fmt-confirm-cancel">Cancel</button>
+          <button class="btn btn-danger" id="fmt-confirm-remove">Remove</button>
+        </div>
+      </div>
+    `, html`
+      <button class="btn btn-ghost" data-modal-close id="fmt-close-btn">Close</button>
+    `);
 
     const convertable = converterEnabled
       ? SUPPORTED_FORMATS.filter(f => !formats.includes(f))
@@ -425,10 +449,82 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
       ${readBlock}
       ${descriptionBlock}
     </div>
-  </div>`;
+  </div>
+  ${formatModal}`;
 
-    const convertModule = converterEnabled ? `(function(){var wrap=document.getElementById('convert-wrap');var btn=document.getElementById('convert-btn');var dropdown=document.getElementById('convert-dropdown');if(!wrap||!btn||!dropdown)return;btn.addEventListener('click',function(e){e.stopPropagation();var open=dropdown.classList.toggle('open');btn.setAttribute('aria-expanded',open?'true':'false');});document.addEventListener('click',function(){dropdown.classList.remove('open');btn.setAttribute('aria-expanded','false');});dropdown.addEventListener('click',function(e){e.stopPropagation();var target=e.target.closest('[data-fmt]');if(!target)return;var toFmt=target.dataset.fmt;dropdown.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.disabled=true;btn.classList.add('loading');fetch(location.pathname+'/convert',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'to_format='+encodeURIComponent(toFmt)}).then(function(r){return r.json();}).then(function(data){if(data.error)throw new Error(data.error);var container=document.getElementById('book-formats');if(container){var pill=document.createElement('span');pill.className='format-badge format-badge-new';pill.textContent=toFmt;container.appendChild(pill);}var li=target.closest('li');if(li)li.remove();btn.disabled=false;btn.classList.remove('loading');if(!dropdown.querySelector('[data-fmt]')){wrap.style.display='none';}}).catch(function(){btn.disabled=false;btn.classList.remove('loading');btn.classList.add('convert-error');setTimeout(function(){btn.classList.remove('convert-error');},3000);});});})();` : "";
-    const scrollModule = `(function(){var h=document.querySelector('.header');if(!h)return;function u(){h.classList.toggle('opaque',window.scrollY>30);}window.addEventListener('scroll',u,{passive:true});u();})();(function(){var f=document.querySelector('.rating-form');if(!f)return;var btns=Array.from(f.querySelectorAll('.star-btn'));function applyRating(n){btns.forEach(function(b,j){var v=j+1;var filled=v<=n;b.classList.toggle('filled',filled);b.textContent=filled?'★':'☆';b.value=(v===n?0:v).toString();});}f.addEventListener('submit',function(e){e.preventDefault();var val=parseInt(e.submitter.value,10);fetch(f.action,{method:'POST',body:new URLSearchParams({rating:val})});applyRating(val>0?val:0);});btns.forEach(function(btn,i){btn.addEventListener('mouseenter',function(){btns.forEach(function(b,j){b.classList.toggle('preview',j<=i);});});btn.addEventListener('mouseleave',function(){btns.forEach(function(b){b.classList.remove('preview');});});});})();` + convertModule;
+    const convertModule = converterEnabled ? `(function(){var wrap=document.getElementById('convert-wrap');var btn=document.getElementById('convert-btn');var dropdown=document.getElementById('convert-dropdown');if(!wrap||!btn||!dropdown)return;btn.addEventListener('click',function(e){e.stopPropagation();var open=dropdown.classList.toggle('open');btn.setAttribute('aria-expanded',open?'true':'false');});document.addEventListener('click',function(){dropdown.classList.remove('open');btn.setAttribute('aria-expanded','false');});dropdown.addEventListener('click',function(e){e.stopPropagation();var target=e.target.closest('[data-fmt]');if(!target)return;var toFmt=target.dataset.fmt;dropdown.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.disabled=true;btn.classList.add('loading');fetch(location.pathname+'/convert',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'to_format='+encodeURIComponent(toFmt)}).then(function(r){return r.json();}).then(function(data){if(data.error)throw new Error(data.error);var container=document.getElementById('book-formats');if(container){var pill=document.createElement('button');pill.className='format-badge format-badge-btn format-badge-new';pill.dataset.format=toFmt;pill.textContent=toFmt;container.appendChild(pill);}var li=target.closest('li');if(li)li.remove();btn.disabled=false;btn.classList.remove('loading');if(!dropdown.querySelector('[data-fmt]')){wrap.style.display='none';}}).catch(function(){btn.disabled=false;btn.classList.remove('loading');btn.classList.add('convert-error');setTimeout(function(){btn.classList.remove('convert-error');},3000);});});})();` : "";
+
+    const formatModule = `(function(){
+var modal=document.getElementById('format-modal');if(!modal)return;
+var title=modal.querySelector('.modal-title');
+var stepActions=document.getElementById('fmt-step-actions');
+var stepConfirm=document.getElementById('fmt-step-confirm');
+var confirmName=document.getElementById('fmt-confirm-name');
+var confirmBtn=document.getElementById('fmt-confirm-remove');
+var confirmCancel=document.getElementById('fmt-confirm-cancel');
+var downloadLink=document.getElementById('fmt-download');
+var removeBtn=document.getElementById('fmt-remove-btn');
+var sendStatus=document.getElementById('fmt-send-status');
+var closeBtn=document.getElementById('fmt-close-btn');
+var footer=closeBtn.parentElement;
+var currentFormat='';
+
+function closeModal(){modal.classList.remove('open');modal.addEventListener('transitionend',function h(){modal.hidden=true;modal.removeEventListener('transitionend',h);});}
+function resetModal(){stepActions.hidden=false;stepConfirm.hidden=true;footer.hidden=false;sendStatus.hidden=true;sendStatus.textContent='';sendStatus.className='fmt-send-status';}
+
+document.getElementById('book-formats').addEventListener('click',function(e){
+  var badge=e.target.closest('[data-format]');if(!badge)return;
+  currentFormat=badge.dataset.format;
+  title.textContent=currentFormat;
+  downloadLink.href='#';
+  fetch('/app/book/${book.id}/download-url?format='+encodeURIComponent(currentFormat)).then(function(r){return r.json();}).then(function(d){if(d.url)downloadLink.href=d.url;});
+  resetModal();
+  modal.hidden=false;requestAnimationFrame(function(){requestAnimationFrame(function(){modal.classList.add('open');});});
+});
+
+removeBtn.addEventListener('click',function(){
+  stepActions.hidden=true;stepConfirm.hidden=false;footer.hidden=true;
+  confirmName.textContent=currentFormat;
+});
+
+confirmCancel.addEventListener('click',function(){
+  resetModal();
+});
+
+confirmBtn.addEventListener('click',function(){
+  confirmBtn.disabled=true;confirmBtn.textContent='Removing...';
+  fetch(location.pathname+'/remove-format',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'format='+encodeURIComponent(currentFormat)}).then(function(r){return r.json();}).then(function(data){
+    if(data.error)throw new Error(data.error);
+    var badge=document.querySelector('[data-format="'+currentFormat+'"]');if(badge)badge.remove();
+    closeModal();
+    confirmBtn.disabled=false;confirmBtn.textContent='Remove';
+  }).catch(function(err){
+    confirmBtn.disabled=false;confirmBtn.textContent='Remove';
+    sendStatus.hidden=false;sendStatus.textContent=err.message||'Failed to remove format';sendStatus.className='fmt-send-status fmt-error';
+    resetModal();
+  });
+});
+
+modal.addEventListener('click',function(e){
+  var sendBtn=e.target.closest('[data-send-device]');if(!sendBtn)return;
+  var device=sendBtn.dataset.sendDevice;
+  sendStatus.hidden=false;sendStatus.textContent='Sending to '+device+'...';sendStatus.className='fmt-send-status';
+  sendBtn.disabled=true;
+  fetch(location.pathname+'/send-to-device',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'format='+encodeURIComponent(currentFormat)+'&device='+encodeURIComponent(device)}).then(function(r){return r.json();}).then(function(data){
+    if(data.error)throw new Error(data.error);
+    sendStatus.textContent='Sent to '+device;sendStatus.className='fmt-send-status fmt-success';
+    sendBtn.disabled=false;
+  }).catch(function(err){
+    sendStatus.textContent=err.message||'Failed to send';sendStatus.className='fmt-send-status fmt-error';
+    sendBtn.disabled=false;
+  });
+});
+
+var obs=new MutationObserver(function(){if(modal.hidden)resetModal();});
+obs.observe(modal,{attributes:true,attributeFilter:['hidden']});
+})();`;
+
+    const scrollModule = `(function(){var h=document.querySelector('.header');if(!h)return;function u(){h.classList.toggle('opaque',window.scrollY>30);}window.addEventListener('scroll',u,{passive:true});u();})();(function(){var f=document.querySelector('.rating-form');if(!f)return;var btns=Array.from(f.querySelectorAll('.star-btn'));function applyRating(n){btns.forEach(function(b,j){var v=j+1;var filled=v<=n;b.classList.toggle('filled',filled);b.textContent=filled?'★':'☆';b.value=(v===n?0:v).toString();});}f.addEventListener('submit',function(e){e.preventDefault();var val=parseInt(e.submitter.value,10);fetch(f.action,{method:'POST',body:new URLSearchParams({rating:val})});applyRating(val>0?val:0);});btns.forEach(function(btn,i){btn.addEventListener('mouseenter',function(){btns.forEach(function(b,j){b.classList.toggle('preview',j<=i);});});btn.addEventListener('mouseleave',function(){btns.forEach(function(b){b.classList.remove('preview');});});});})();` + convertModule + formatModule;
     return appLayout(html`${book.title} - Lyceum`, ["/public/css/book-detail.css"], detailBody, "library", scrollModule, "book-detail-page");
   }
 

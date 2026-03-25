@@ -88,6 +88,79 @@
   text-transform: uppercase;
 }
 
+.format-badge-btn {
+  background: none;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: border-color 150ms, color 150ms;
+}
+
+.format-badge-btn:hover {
+  border-color: rgba(251,191,36,0.5);
+  color: rgba(240,232,220,0.8);
+}
+
+/* --- Format modal actions --- */
+
+.fmt-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fmt-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: rgba(240,232,220,0.7);
+  font-family: var(--font);
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  text-decoration: none;
+}
+
+.fmt-action-btn:hover {
+  background: rgba(240,232,220,0.06);
+  color: rgba(240,232,220,0.95);
+}
+
+.fmt-action-danger {
+  color: rgba(239,68,68,0.7);
+}
+
+.fmt-action-danger:hover {
+  background: rgba(239,68,68,0.08);
+  color: #ef4444;
+}
+
+.fmt-send-status {
+  margin-top: 12px;
+  padding: 8px 16px;
+  font-size: 0.85em;
+  border-radius: 6px;
+  color: rgba(240,232,220,0.5);
+}
+
+.fmt-send-status.fmt-success {
+  color: #22c55e;
+}
+
+.fmt-send-status.fmt-error {
+  color: #ef4444;
+}
+
+.fmt-confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
 /* --- Convert button --- */
 
 .convert-wrap {

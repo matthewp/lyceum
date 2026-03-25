@@ -13,13 +13,14 @@ import {
   exchangeCode,
   validateToken,
   verifySignedUrl,
+  createSignedUrl,
   checkPassword,
   createSessionCookie,
   verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
 import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appAuthorPage, appSearchPage, appDevicesPage } from "./templates.ts";
-import { listDevices, addDevice, verifyDevice, removeDevice } from "./devices/index.ts";
+import { listDevices, addDevice, verifyDevice, removeDevice, sendToDevice } from "./devices/index.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
 
@@ -552,7 +553,69 @@ export function startServer(config: ServerConfig) {
         json(res, { error: "Book not found" }, 404);
         return;
       }
-      sendHtml(res, viewBookPage(book, "app", undefined, !!process.env.CONVERTER_URL));
+      const devices = listDevices();
+      sendHtml(res, viewBookPage(book, "app", undefined, !!process.env.CONVERTER_URL, devices.map(d => d.name)));
+      return;
+    }
+
+    // Get signed download URL for a format
+    const downloadUrlMatch = path.match(/^\/app\/book\/(\d+)\/download-url$/);
+    if (req.method === "GET" && downloadUrlMatch) {
+      const bookId = parseInt(downloadUrlMatch[1], 10);
+      const format = url.searchParams.get("format")?.toUpperCase();
+      if (!format) { json(res, { error: "format required" }, 400); return; }
+      const dlUrl = createSignedUrl(config.baseUrl, `/download${storage.bookDownloadPath(format, bookId)}`, 300);
+      json(res, { url: dlUrl });
+      return;
+    }
+
+    // Remove format from book
+    const removeFormatMatch = path.match(/^\/app\/book\/(\d+)\/remove-format$/);
+    if (req.method === "POST" && removeFormatMatch) {
+      const bookId = parseInt(removeFormatMatch[1], 10);
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      const format = params.get("format")?.toUpperCase();
+      if (!format) { json(res, { error: "format required" }, 400); return; }
+
+      try {
+        await storage.removeFormats(bookId, [format]);
+        const updated = await storage.getBook(bookId);
+        json(res, { formats: updated?.formats ?? [] });
+      } catch (e: any) {
+        json(res, { error: e.message }, 500);
+      }
+      return;
+    }
+
+    // Send book to device
+    const sendToDeviceMatch = path.match(/^\/app\/book\/(\d+)\/send-to-device$/);
+    if (req.method === "POST" && sendToDeviceMatch) {
+      const bookId = parseInt(sendToDeviceMatch[1], 10);
+      const body = await readBody(req);
+      const params = new URLSearchParams(body);
+      const format = params.get("format")?.toUpperCase();
+      const deviceName = params.get("device");
+      if (!format || !deviceName) { json(res, { error: "format and device required" }, 400); return; }
+
+      try {
+        const book = await storage.getBook(bookId);
+        if (!book) { json(res, { error: "Book not found" }, 404); return; }
+
+        const ext = format.toLowerCase();
+        const authors = (book.authors as string[])?.join(" & ") ?? "";
+        const rawName = authors ? `${book.title} - ${authors}.${ext}` : `${book.title}.${ext}`;
+        const filename = rawName.replace(/[:<>?*"|\\\/]/g, "_");
+
+        const downloadPath = storage.bookDownloadPath(format, bookId);
+        const dlRes = await storage.downloadBook(downloadPath);
+        if (!dlRes.ok) { json(res, { error: "Failed to download book" }, 500); return; }
+        const buf = Buffer.from(await dlRes.arrayBuffer());
+        await sendToDevice(deviceName, buf, filename);
+        json(res, { ok: true });
+      } catch (e: any) {
+        json(res, { error: e.message }, 500);
+      }
       return;
     }
 
