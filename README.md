@@ -89,12 +89,10 @@ Secret=lyceum_auth_password,type=env,target=AUTH_PASSWORD
 
 ## Format Conversion
 
-The `convert_book` MCP tool converts a book from one format to another (e.g. EPUB to MOBI). This requires an external converter service:
+The `convert_book` MCP tool converts a book from one format to another (e.g. EPUB to MOBI). This requires [ebook-converter-api](https://github.com/matthewp/ebook-converter-api):
 
 - `CONVERTER_URL` — base URL of the service (e.g. `http://converter:8080`)
 - `CONVERTER_API_KEY` — optional Bearer token
-
-The converter must accept `POST /convert` with a multipart form body containing a `file` field (the source file) and a `format` field (the target extension, e.g. `mobi`), and return the converted file as the response body.
 
 ## MCP Tools
 
