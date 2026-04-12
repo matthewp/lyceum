@@ -172,7 +172,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("set_metadata", {
-    description: "Update metadata fields on a book in the library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, etc.",
+    description: "Update metadata fields on a book in the library. Fields can include: title, authors (as array), tags (as array), series, publisher, rating, comments, read_at (ISO date string to mark when read, or null to clear), etc.",
     inputSchema: {
       id: z.coerce.number().describe("The book ID"),
       fields: z.record(z.string(), z.unknown()).describe('Metadata fields to set (e.g. {"title": "New Title", "tags": ["fiction", "sci-fi"], "authors": ["Author Name"]})'),
@@ -182,6 +182,28 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
       await storage.setMetadata(id, fields as Record<string, unknown>);
       return {
         content: [{ type: "text", text: "Metadata updated successfully." }],
+      };
+    } catch (e: any) {
+      return {
+        content: [{ type: "text", text: e.message }],
+        isError: true,
+      };
+    }
+  });
+
+  server.registerTool("mark_read", {
+    description: "Mark a book as read (or unread) in the library. Optionally provide a date; defaults to today. Pass read: false to clear the read date.",
+    inputSchema: {
+      id: z.coerce.number().describe("The book ID"),
+      read: z.boolean().optional().default(true).describe("true to mark as read, false to mark as unread"),
+      date: z.string().optional().describe("ISO date string for when the book was read (defaults to today)"),
+    },
+  }, async ({ id, read, date }) => {
+    try {
+      const readAt = read ? (date ?? new Date().toISOString()) : null;
+      await storage.markRead(id, readAt);
+      return {
+        content: [{ type: "text", text: read ? `Marked as read on ${readAt}.` : "Marked as unread." }],
       };
     } catch (e: any) {
       return {

@@ -928,7 +928,7 @@ export function startServer(config: ServerConfig) {
       const book = await storage.getBook(bookId);
       if (!book) { json(res, { error: "Book not found" }, 404); return; }
       const newReadAt = book.read_at ? null : new Date().toISOString();
-      await storage.setMetadata(bookId, { read_at: newReadAt });
+      await storage.markRead(bookId, newReadAt);
       res.writeHead(302, { Location: `/app/book/${bookId}` });
       res.end();
       return;

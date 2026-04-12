@@ -411,6 +411,10 @@ export class LocalBackend implements StorageBackend {
     }
   }
 
+  async markRead(bookId: number, readAt: string | null): Promise<void> {
+    await this.setMetadata(bookId, { read_at: readAt });
+  }
+
   async setCover(bookId: number, imageUrl: string): Promise<void> {
     const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(bookId) as { path: string } | undefined;
     if (!row) throw new Error(`Book ${bookId} not found`);

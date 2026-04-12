@@ -326,6 +326,10 @@ export class CalibreBackend implements StorageBackend {
     });
   }
 
+  async markRead(bookId: number, readAt: string | null): Promise<void> {
+    await this.setMetadata(bookId, { read_at: readAt });
+  }
+
   async setCover(bookId: number, imageUrl: string): Promise<void> {
     const imgRes = await fetch(imageUrl);
     if (!imgRes.ok) throw new Error(`Failed to download cover image: ${imgRes.status}`);
