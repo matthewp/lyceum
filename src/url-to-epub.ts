@@ -42,6 +42,41 @@ function toDateString(value: string | null | undefined): string {
   return value.split("T")[0];
 }
 
+const VOID_ELEMENTS = new Set([
+  "area", "base", "br", "col", "embed", "hr", "img", "input",
+  "link", "meta", "param", "source", "track", "wbr",
+]);
+
+function serializeToXhtml(node: any): string {
+  if (node.nodeType === 3) {
+    return escapeXml(node.nodeValue ?? "");
+  }
+  if (node.nodeType === 8) {
+    return `<!--${node.data}-->`;
+  }
+  if (node.nodeType !== 1) {
+    return "";
+  }
+  const tag = node.nodeName.toLowerCase();
+  const attrs = Array.from(node.attributes as any[])
+    .map((a: any) => ` ${a.name}="${escapeXml(a.value)}"`)
+    .join("");
+  if (VOID_ELEMENTS.has(tag)) {
+    return `<${tag}${attrs}/>`;
+  }
+  const children = Array.from(node.childNodes as any[])
+    .map((child: any) => serializeToXhtml(child))
+    .join("");
+  return `<${tag}${attrs}>${children}</${tag}>`;
+}
+
+function toXhtml(html: string): string {
+  const { document } = parseHTML(`<html><head></head><body>${html}</body></html>`);
+  return Array.from((document as any).body.childNodes)
+    .map((node: any) => serializeToXhtml(node))
+    .join("");
+}
+
 export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: string; title: string; author: string }> {
   assertSafeUrl(url);
 
@@ -88,7 +123,7 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
   </metadata>
   <manifest>
     <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
-    <item id="content" href="content.html" media-type="text/html"/>
+    <item id="content" href="content.html" media-type="application/xhtml+xml"/>
   </manifest>
   <spine toc="ncx">
     <itemref idref="content"/>
@@ -117,17 +152,19 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
   </navMap>
 </ncx>`;
 
-  const contentHtml = `<!DOCTYPE html>
-<html>
+  const contentHtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <meta charset="utf-8"/>
   <title>${escapeXml(title)}</title>
 </head>
 <body>
-${result.content}
+${toXhtml(result.content)}
 </body>
 </html>`;
 
+  // fflate processes entries in object insertion order, so mimetype is
+  // guaranteed to be the first ZIP entry as required by the EPUB spec.
   const zipped = zipSync({
     "mimetype": [enc.encode("application/epub+zip"), { level: 0 }],
     "META-INF/container.xml": enc.encode(containerXml),
