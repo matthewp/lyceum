@@ -4,6 +4,7 @@ import { openDatabase, bookDirPath, bookFilePath, coverFilePath, insertFts, dele
 import type { FileStore } from "./filestore.ts";
 import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult } from "./types.ts";
 import { extractMetadata } from "../metadata-extract/index.ts";
+import { injectEpubMetadata } from "../epub-inject.ts";
 import { logger as root } from "../logger.ts";
 
 const log = root.child({ module: "local" });
@@ -527,11 +528,17 @@ export class LocalBackend implements StorageBackend {
     const id = parseInt(parts[0], 10);
     const format = parts[1];
 
-    const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(id) as { path: string } | undefined;
+    const row = this.db.prepare("SELECT path, title, has_cover FROM books WHERE id = ?").get(id) as { path: string; title: string; has_cover: number } | undefined;
     if (!row) return new Response(null, { status: 404 });
 
-    const data = await this.files.get(bookFilePath(row.path, format));
+    let data = await this.files.get(bookFilePath(row.path, format));
     if (!data) return new Response(null, { status: 404 });
+
+    if (format === "epub") {
+      const authors = this.getAuthors(id);
+      const cover = row.has_cover ? await this.files.get(coverFilePath(row.path)) : null;
+      data = await injectEpubMetadata(data, { title: row.title, authors, cover });
+    }
 
     const mimeTypes: Record<string, string> = {
       epub: "application/epub+zip",
