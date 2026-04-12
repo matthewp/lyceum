@@ -1,8 +1,11 @@
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
 import { stateDb } from "./state.ts";
 import { escapeHtml } from "./html.ts";
+import { logger } from "./logger.ts";
 import type { StorageBackend, BookSummary, CategoryItem } from "./storage/types.ts";
 import type { IncomingMessage } from "node:http";
+
+const log = logger.child({ module: "opds" });
 
 // --- Password hashing ---
 
@@ -18,7 +21,8 @@ function verifyPassword(password: string, stored: string): boolean {
   const derived = scryptSync(password, salt, 64);
   try {
     return timingSafeEqual(derived, Buffer.from(hash, "hex"));
-  } catch {
+  } catch (err) {
+    log.warn({ err }, "OPDS password hash malformed");
     return false;
   }
 }
@@ -60,25 +64,56 @@ export function setOpdsSettings(opts: { enabled?: boolean; username?: string; pa
 // --- OPDS Basic Auth ---
 
 export function verifyOpdsAuth(req: IncomingMessage): boolean {
+  const ip = req.socket.remoteAddress;
   const settings = getOpdsSettings();
-  if (!settings.enabled || !settings.username || !settings.hasPassword) return false;
+
+  if (!settings.enabled) {
+    log.info({ ip }, "OPDS auth rejected: OPDS is disabled");
+    return false;
+  }
+  if (!settings.username || !settings.hasPassword) {
+    log.info({ ip }, "OPDS auth rejected: OPDS not fully configured");
+    return false;
+  }
 
   const auth = req.headers.authorization;
-  if (!auth?.startsWith("Basic ")) return false;
+  if (!auth) {
+    log.info({ ip }, "OPDS auth rejected: no Authorization header");
+    return false;
+  }
+  if (!auth.startsWith("Basic ")) {
+    log.info({ ip }, "OPDS auth rejected: unsupported auth scheme");
+    return false;
+  }
 
   const decoded = Buffer.from(auth.slice(6), "base64").toString("utf-8");
   const colon = decoded.indexOf(":");
-  if (colon === -1) return false;
+  if (colon === -1) {
+    log.info({ ip }, "OPDS auth rejected: malformed credentials");
+    return false;
+  }
 
   const user = decoded.slice(0, colon);
   const pass = decoded.slice(colon + 1);
 
-  if (user !== settings.username) return false;
+  if (user !== settings.username) {
+    log.info({ ip, username: user }, "OPDS auth rejected: wrong username");
+    return false;
+  }
 
   const stored = (getSetting.get("password_hash") as { value: string } | undefined)?.value;
-  if (!stored) return false;
+  if (!stored) {
+    log.info({ ip, username: user }, "OPDS auth rejected: no password hash stored");
+    return false;
+  }
 
-  return verifyPassword(pass, stored);
+  if (!verifyPassword(pass, stored)) {
+    log.info({ ip, username: user }, "OPDS auth rejected: wrong password");
+    return false;
+  }
+
+  log.info({ ip, username: user }, "OPDS auth accepted");
+  return true;
 }
 
 // --- XML helpers ---

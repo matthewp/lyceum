@@ -413,6 +413,7 @@ export function startServer(config: ServerConfig) {
   // --- OPDS Catalog ---
   if (path.startsWith("/opds")) {
     if (!verifyOpdsAuth(req)) {
+      log.info({ url: req.url }, "OPDS request rejected: unauthorized");
       res.writeHead(401, {
         "WWW-Authenticate": 'Basic realm="Lyceum OPDS"',
         "Content-Type": "text/plain",
@@ -433,12 +434,22 @@ export function startServer(config: ServerConfig) {
 
     if (req.method === "GET" && path === "/opds/recent") {
       const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      sendXml(await recentFeed(BASE_URL, storage, page), "acquisition");
+      try {
+        sendXml(await recentFeed(BASE_URL, storage, page), "acquisition");
+      } catch (err) {
+        log.error({ err }, "OPDS recentFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
     if (req.method === "GET" && path === "/opds/authors") {
-      sendXml(await authorsFeed(BASE_URL, storage));
+      try {
+        sendXml(await authorsFeed(BASE_URL, storage));
+      } catch (err) {
+        log.error({ err }, "OPDS authorsFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
@@ -446,12 +457,22 @@ export function startServer(config: ServerConfig) {
     if (req.method === "GET" && opdsAuthorMatch) {
       const author = decodeURIComponent(opdsAuthorMatch[1]);
       const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      sendXml(await authorBooksFeed(BASE_URL, storage, author, page), "acquisition");
+      try {
+        sendXml(await authorBooksFeed(BASE_URL, storage, author, page), "acquisition");
+      } catch (err) {
+        log.error({ err, author }, "OPDS authorBooksFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
     if (req.method === "GET" && path === "/opds/series") {
-      sendXml(await seriesFeed(BASE_URL, storage));
+      try {
+        sendXml(await seriesFeed(BASE_URL, storage));
+      } catch (err) {
+        log.error({ err }, "OPDS seriesFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
@@ -459,14 +480,24 @@ export function startServer(config: ServerConfig) {
     if (req.method === "GET" && opdsSeriesMatch) {
       const seriesId = parseInt(opdsSeriesMatch[1], 10);
       const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      const xml = await seriesBooksFeed(BASE_URL, storage, seriesId, page);
-      if (!xml) { json(res, { error: "Series not found" }, 404); return; }
-      sendXml(xml, "acquisition");
+      try {
+        const xml = await seriesBooksFeed(BASE_URL, storage, seriesId, page);
+        if (!xml) { json(res, { error: "Series not found" }, 404); return; }
+        sendXml(xml, "acquisition");
+      } catch (err) {
+        log.error({ err, seriesId }, "OPDS seriesBooksFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
     if (req.method === "GET" && path === "/opds/tags") {
-      sendXml(await tagsFeed(BASE_URL, storage));
+      try {
+        sendXml(await tagsFeed(BASE_URL, storage));
+      } catch (err) {
+        log.error({ err }, "OPDS tagsFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
@@ -474,7 +505,12 @@ export function startServer(config: ServerConfig) {
     if (req.method === "GET" && opdsTagMatch) {
       const tag = decodeURIComponent(opdsTagMatch[1]);
       const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      sendXml(await tagBooksFeed(BASE_URL, storage, tag, page), "acquisition");
+      try {
+        sendXml(await tagBooksFeed(BASE_URL, storage, tag, page), "acquisition");
+      } catch (err) {
+        log.error({ err, tag }, "OPDS tagBooksFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
@@ -482,7 +518,12 @@ export function startServer(config: ServerConfig) {
       const q = url.searchParams.get("q") ?? "";
       if (!q) { json(res, { error: "query required" }, 400); return; }
       const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      sendXml(await searchFeed(BASE_URL, storage, q, page), "acquisition");
+      try {
+        sendXml(await searchFeed(BASE_URL, storage, q, page), "acquisition");
+      } catch (err) {
+        log.error({ err, q }, "OPDS searchFeed failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
@@ -495,14 +536,19 @@ export function startServer(config: ServerConfig) {
     const opdsCoverMatch = path.match(/^\/opds\/cover\/(\d+)$/);
     if (req.method === "GET" && opdsCoverMatch) {
       const bookId = parseInt(opdsCoverMatch[1], 10);
-      const coverBuf = await storage.getBookCover(bookId);
-      if (!coverBuf) { res.writeHead(404); res.end(); return; }
-      res.writeHead(200, {
-        "Content-Type": "image/jpeg",
-        "Content-Length": String(coverBuf.byteLength),
-        "Cache-Control": "public, max-age=86400",
-      });
-      res.end(coverBuf);
+      try {
+        const coverBuf = await storage.getBookCover(bookId);
+        if (!coverBuf) { res.writeHead(404); res.end(); return; }
+        res.writeHead(200, {
+          "Content-Type": "image/jpeg",
+          "Content-Length": String(coverBuf.byteLength),
+          "Cache-Control": "public, max-age=86400",
+        });
+        res.end(coverBuf);
+      } catch (err) {
+        log.error({ err, bookId }, "OPDS cover fetch failed");
+        res.writeHead(500); res.end();
+      }
       return;
     }
 
