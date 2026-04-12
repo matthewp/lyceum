@@ -54,7 +54,7 @@ export function setOpdsSettings(opts: { enabled?: boolean; username?: string; pa
     upsertSetting.run("enabled", opts.enabled ? "true" : "false");
   }
   if (opts.username !== undefined) {
-    upsertSetting.run("username", opts.username);
+    upsertSetting.run("username", opts.username.trim());
   }
   if (opts.password !== undefined) {
     upsertSetting.run("password_hash", hashPassword(opts.password));

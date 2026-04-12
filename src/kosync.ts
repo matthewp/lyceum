@@ -35,7 +35,7 @@ export function setKosyncSettings(opts: { enabled?: boolean; username?: string; 
     upsertSetting.run("enabled", opts.enabled ? "true" : "false");
   }
   if (opts.username !== undefined) {
-    upsertSetting.run("username", opts.username);
+    upsertSetting.run("username", opts.username.trim());
   }
   if (opts.password !== undefined) {
     // Store as MD5 hash — KOReader sends MD5-hashed passwords
