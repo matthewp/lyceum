@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node --watch src/main.ts",
     "start": "node src/main.ts",
-    "import": "node src/import-main.ts"
+    "import": "node src/import-main.ts",
+    "test": "node --test 'test/**/*.test.ts'"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

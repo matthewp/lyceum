@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { StorageBackend } from "./storage/index.ts";
 import { createSignedUrl } from "./auth.ts";
+import { bookFilename } from "./book-filename.ts";
 import { fetchMetadata } from "./metadata.ts";
 import {
   addDevice,
@@ -488,10 +489,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
       // Get book metadata for the filename
       const book = await storage.getBook(book_id);
       if (!book) throw new Error(`Book ${book_id} not found`);
-      const ext = format.toLowerCase();
-      const authors = (book.authors as string[])?.join(" & ") ?? "";
-      const rawName = authors ? `${book.title} - ${authors}.${ext}` : `${book.title}.${ext}`;
-      const filename = rawName.replace(/[:<>?*"|\\\/]/g, "_");
+      const filename = bookFilename(book.title, (book.authors as string[]) ?? [], format);
 
       const downloadPath = storage.bookDownloadPath(format, book_id);
       const res = await storage.downloadBook(downloadPath);

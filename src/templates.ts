@@ -479,7 +479,7 @@ document.getElementById('book-formats').addEventListener('click',function(e){
   currentFormat=badge.dataset.format;
   title.textContent=currentFormat;
   downloadLink.href='#';
-  fetch('/app/book/${book.id}/download-url?format='+encodeURIComponent(currentFormat)).then(function(r){return r.json();}).then(function(d){if(d.url)downloadLink.href=d.url;});
+  fetch('/app/book/${book.id}/download-url?format='+encodeURIComponent(currentFormat)).then(function(r){return r.json();}).then(function(d){if(d.url){downloadLink.href=d.url;downloadLink.download=d.filename||'';}});
   resetModal();
   modal.hidden=false;requestAnimationFrame(function(){requestAnimationFrame(function(){modal.classList.add('open');});});
 });

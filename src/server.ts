@@ -19,6 +19,7 @@ import {
   verifySessionCookie,
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
+import { bookFilename } from "./book-filename.ts";
 import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appAuthorPage, appSearchPage, appDevicesPage, appSettingsPage } from "./templates.ts";
 import {
   verifyOpdsAuth, getOpdsSettings, setOpdsSettings,
@@ -872,8 +873,11 @@ export function startServer(config: ServerConfig) {
       const bookId = parseInt(downloadUrlMatch[1], 10);
       const format = url.searchParams.get("format")?.toUpperCase();
       if (!format) { json(res, { error: "format required" }, 400); return; }
+      const book = await storage.getBook(bookId);
+      if (!book) { json(res, { error: "Book not found" }, 404); return; }
       const dlUrl = createSignedUrl(config.baseUrl, `/download${storage.bookDownloadPath(format, bookId)}`, 300);
-      json(res, { url: dlUrl });
+      const filename = bookFilename(book.title, (book.authors as string[]) ?? [], format);
+      json(res, { url: dlUrl, filename });
       return;
     }
 
@@ -910,10 +914,7 @@ export function startServer(config: ServerConfig) {
         const book = await storage.getBook(bookId);
         if (!book) { json(res, { error: "Book not found" }, 404); return; }
 
-        const ext = format.toLowerCase();
-        const authors = (book.authors as string[])?.join(" & ") ?? "";
-        const rawName = authors ? `${book.title} - ${authors}.${ext}` : `${book.title}.${ext}`;
-        const filename = rawName.replace(/[:<>?*"|\\\/]/g, "_");
+        const filename = bookFilename(book.title, (book.authors as string[]) ?? [], format);
 
         const downloadPath = storage.bookDownloadPath(format, bookId);
         const dlRes = await storage.downloadBook(downloadPath);
