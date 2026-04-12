@@ -522,8 +522,8 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
       const result = await storage.addBook(filename, data);
       await storage.setMetadata(result.book_id, { tags: ["article"] });
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    } catch (e: any) {
-      return { content: [{ type: "text", text: e.message }], isError: true };
+    } catch (e) {
+      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
     }
   });
 

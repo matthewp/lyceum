@@ -3,6 +3,31 @@ import { DefuddleClass as Defuddle } from "defuddle/node";
 import { zipSync } from "fflate";
 import { bookFilename } from "./book-filename.ts";
 
+const PRIVATE_IP_RE = /^(127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0|::1$|fc|fd)/i;
+
+function assertSafeUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid URL: ${url}`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`URL scheme not allowed: ${parsed.protocol}`);
+  }
+  const host = parsed.hostname.replace(/^\[|\]$/g, "");
+  if (host === "localhost" || PRIVATE_IP_RE.test(host)) {
+    throw new Error(`URL resolves to a private or reserved address: ${host}`);
+  }
+  const ipv4Parts = host.split(".");
+  if (ipv4Parts.length === 4) {
+    const [a, b] = ipv4Parts.map(Number);
+    if (a === 172 && b >= 16 && b <= 31) {
+      throw new Error(`URL resolves to a private or reserved address: ${host}`);
+    }
+  }
+}
+
 function escapeXml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -12,7 +37,14 @@ function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function toDateString(value: string | null | undefined): string {
+  if (!value) return new Date().toISOString().split("T")[0];
+  return value.split("T")[0];
+}
+
 export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: string; title: string; author: string }> {
+  assertSafeUrl(url);
+
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
@@ -29,7 +61,7 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
   const hostname = new URL(url).hostname;
   const title = result.title || hostname;
   const author = result.author || result.site || hostname;
-  const date = result.published || new Date().toISOString().split("T")[0];
+  const date = toDateString(result.published);
   const description = result.description || "";
   const language = result.language || "en";
   const uuid = crypto.randomUUID();
@@ -56,7 +88,7 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
   </metadata>
   <manifest>
     <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
-    <item id="content" href="content.html" media-type="application/xhtml+xml"/>
+    <item id="content" href="content.html" media-type="text/html"/>
   </manifest>
   <spine toc="ncx">
     <itemref idref="content"/>
@@ -85,10 +117,10 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
   </navMap>
 </ncx>`;
 
-  const contentHtml = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+  const contentHtml = `<!DOCTYPE html>
+<html>
 <head>
+  <meta charset="utf-8"/>
   <title>${escapeXml(title)}</title>
 </head>
 <body>
