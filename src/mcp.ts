@@ -13,6 +13,7 @@ import {
 } from "./devices/index.ts";
 import { getOpdsSettings, setOpdsSettings } from "./opds.ts";
 import { getKosyncSettings, setKosyncSettings } from "./kosync.ts";
+import { urlToEpub } from "./url-to-epub.ts";
 
 export function createMcpServer(storage: StorageBackend, baseUrl: string): McpServer {
   const server = new McpServer({
@@ -507,6 +508,22 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
         content: [{ type: "text", text: e.message }],
         isError: true,
       };
+    }
+  });
+
+  server.registerTool("create_book_from_url", {
+    description: "Fetch a URL and create an epub book from the article content, adding it to the library.",
+    inputSchema: {
+      url: z.string().describe("The URL of the article to convert to an epub"),
+    },
+  }, async ({ url }) => {
+    try {
+      const { data, filename } = await urlToEpub(url);
+      const result = await storage.addBook(filename, data);
+      await storage.setMetadata(result.book_id, { tags: ["article"] });
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
     }
   });
 
