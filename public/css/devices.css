@@ -90,3 +90,144 @@
   font-size: 0.9em;
   margin-top: 12px;
 }
+
+/* Device name link in list */
+.device-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+.device-row:hover .device-name-link { color: #ec4899; }
+
+/* Device detail page */
+.back-link {
+  display: inline-block;
+  color: rgba(240,232,220,0.45);
+  text-decoration: none;
+  font-size: 0.85em;
+  margin-bottom: 6px;
+  transition: color 150ms;
+}
+.back-link:hover { color: rgba(240,232,220,0.8); }
+
+.page-header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.device-type-badge {
+  display: inline-block;
+  font-size: 0.45em;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #06b6d4;
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.25);
+  border-radius: 4px;
+  padding: 3px 8px;
+  vertical-align: middle;
+  margin-left: 10px;
+  position: relative;
+  top: -4px;
+}
+
+.device-section {
+  margin-top: 40px;
+}
+
+.section-title {
+  font-size: 1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(240,232,220,0.45);
+  margin-bottom: 10px;
+}
+
+.section-desc {
+  color: rgba(240,232,220,0.6);
+  font-size: 0.95em;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  max-width: 520px;
+}
+
+.bookmarklet-wrap {
+  margin-bottom: 10px;
+}
+
+.bookmarklet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(236,72,153,0.08);
+  border: 2px dashed rgba(236,72,153,0.45);
+  border-radius: 8px;
+  color: #ec4899;
+  font-weight: 600;
+  font-size: 0.95em;
+  text-decoration: none;
+  cursor: grab;
+  transition: background 150ms, border-color 150ms;
+  user-select: none;
+}
+.bookmarklet-link:hover {
+  background: rgba(236,72,153,0.14);
+  border-color: rgba(236,72,153,0.7);
+}
+.bookmarklet-link:active { cursor: grabbing; }
+
+.bookmarklet-hint {
+  font-size: 0.78em;
+  color: rgba(240,232,220,0.35);
+}
+
+/* Bookmarklet landing page */
+.bml-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.bml-card {
+  text-align: center;
+  padding: 48px 40px;
+  background: rgba(240,232,220,0.03);
+  border: 1px solid rgba(240,232,220,0.1);
+  border-radius: 12px;
+  max-width: 480px;
+  width: 100%;
+}
+
+.bml-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(240,232,220,0.1);
+  border-top-color: #ec4899;
+  border-radius: 50%;
+  animation: bml-spin 0.8s linear infinite;
+  margin: 0 auto 24px;
+}
+@keyframes bml-spin { to { transform: rotate(360deg); } }
+
+.bml-status {
+  font-size: 1.1em;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.bml-pending { color: rgba(240,232,220,0.6); }
+.bml-success { color: rgba(240,232,220,0.9); }
+.bml-error   { color: #ef4444; }
+
+.bml-countdown {
+  font-size: 0.82em;
+  color: rgba(240,232,220,0.35);
+  margin-bottom: 20px;
+}
+
+.bml-back {
+  margin-top: 8px;
+}

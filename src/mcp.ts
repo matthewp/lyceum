@@ -530,5 +530,21 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
     }
   });
 
+  server.registerTool("send_url_to_device", {
+    description: "Fetch a URL, convert the article to an epub, and send it directly to an e-reader device without saving to the library.",
+    inputSchema: {
+      url: z.string().describe("The URL of the article to convert to an epub"),
+      device_name: z.string().describe("Name of the target device"),
+    },
+  }, async ({ url, device_name }) => {
+    try {
+      const { data, filename, title } = await urlToEpub(url);
+      await sendToDevice(device_name, data, filename);
+      return { content: [{ type: "text", text: `"${title}" sent to "${device_name}".` }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
+    }
+  });
+
   return server;
 }

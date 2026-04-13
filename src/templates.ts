@@ -799,7 +799,7 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
   const rows = devices.map(d => {
     const typeLabel = d.type.charAt(0).toUpperCase() + d.type.slice(1);
     return html`<tr class="device-row" data-device-name="${d.name}">
-      <td class="col-device-name">${d.name}</td>
+      <td class="col-device-name"><a href="/app/devices/${encodeURIComponent(d.name)}" class="device-name-link">${d.name}</a></td>
       <td class="col-device-type">${typeLabel}</td>
       <td class="col-device-actions"><button class="btn-remove-device" data-remove="${d.name}" aria-label="Remove ${d.name}">&times;</button></td>
     </tr>`;
@@ -1017,6 +1017,95 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
   })();`;
 
   return appLayout("Devices - Lyceum", ["/public/css/book-table.css", "/public/css/devices.css"], body, "devices", devicesModule, "cover-wall-page");
+}
+
+export function appDeviceDetailPage(device: { name: string; type: string }, baseUrl: string): SafeHTML {
+  const typeLabel = device.type.charAt(0).toUpperCase() + device.type.slice(1);
+  const deviceParam = encodeURIComponent(device.name);
+  const bookmarkletHref = `javascript:location.href='${baseUrl}/app/bookmarklet?device=${deviceParam}&url='+encodeURIComponent(location.href)`;
+
+  const body = html`
+  <div class="container">
+    <div class="page-header">
+      <div class="page-header-left">
+        <a href="/app/devices" class="back-link">&larr; Devices</a>
+        <h1 class="page-title">${device.name} <span class="device-type-badge">${typeLabel}</span></h1>
+      </div>
+    </div>
+    <section class="device-section">
+      <h2 class="section-title">Bookmarklet</h2>
+      <p class="section-desc">Drag the button below to your browser's bookmarks bar. Clicking it on any article will send it to this device.</p>
+      <div class="bookmarklet-wrap">
+        <a href="${bookmarkletHref}" class="bookmarklet-link" draggable="true">Send to ${device.name}</a>
+      </div>
+      <p class="bookmarklet-hint">Drag to your bookmarks bar &mdash; don't click here.</p>
+    </section>
+  </div>`;
+
+  return appLayout(`${device.name} - Lyceum`, ["/public/css/devices.css"], body, "devices");
+}
+
+export function appBookmarkletPage(deviceName: string, articleUrl: string): SafeHTML {
+  const module = `(function(){
+    var statusEl = document.getElementById("bml-status");
+    var goBack = document.getElementById("bml-back");
+    var spinnerEl = document.getElementById("bml-spinner");
+    var countdownEl = document.getElementById("bml-countdown");
+    var articleUrl = ${JSON.stringify(articleUrl)};
+    var deviceName = ${JSON.stringify(deviceName)};
+    var timer = null;
+
+    goBack.addEventListener("click", function() {
+      if (timer) clearInterval(timer);
+    });
+
+    fetch("/app/bookmarklet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device: deviceName, url: articleUrl })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      spinnerEl.hidden = true;
+      if (data.error) {
+        statusEl.textContent = "Error: " + data.error;
+        statusEl.className = "bml-status bml-error";
+      } else {
+        statusEl.textContent = "Sent \\u201c" + data.title + "\\u201d to " + deviceName + ".";
+        statusEl.className = "bml-status bml-success";
+        var countdown = 10;
+        countdownEl.textContent = "Redirecting in " + countdown + "s\\u2026";
+        countdownEl.hidden = false;
+        timer = setInterval(function() {
+          countdown--;
+          countdownEl.textContent = "Redirecting in " + countdown + "s\\u2026";
+          if (countdown <= 0) {
+            clearInterval(timer);
+            location.href = articleUrl;
+          }
+        }, 1000);
+      }
+      goBack.hidden = false;
+    })
+    .catch(function(e) {
+      spinnerEl.hidden = true;
+      statusEl.textContent = "Error: " + e.message;
+      statusEl.className = "bml-status bml-error";
+      goBack.hidden = false;
+    });
+  })();`;
+
+  const body = html`
+  <div class="bml-page">
+    <div class="bml-card">
+      <div class="bml-spinner" id="bml-spinner"></div>
+      <p class="bml-status bml-pending" id="bml-status">Sending to ${deviceName}&hellip;</p>
+      <p class="bml-countdown" id="bml-countdown" hidden></p>
+      <a href="${articleUrl}" class="btn btn-ghost bml-back" id="bml-back" hidden>Go back</a>
+    </div>
+  </div>`;
+
+  return appLayout("Sending to device \u2014 Lyceum", ["/public/css/devices.css"], body, "devices", module);
 }
 
 export function appSettingsPage(opts: {

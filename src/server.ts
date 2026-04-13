@@ -20,7 +20,8 @@ import {
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
 import { bookFilename } from "./book-filename.ts";
-import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appAuthorPage, appSearchPage, appDevicesPage, appSettingsPage } from "./templates.ts";
+import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appAuthorPage, appSearchPage, appDevicesPage, appDeviceDetailPage, appBookmarkletPage, appSettingsPage } from "./templates.ts";
+import { urlToEpub } from "./url-to-epub.ts";
 import {
   verifyOpdsAuth, getOpdsSettings, setOpdsSettings,
   rootFeed, recentFeed, authorsFeed, authorBooksFeed,
@@ -780,6 +781,39 @@ export function startServer(config: ServerConfig) {
       try {
         removeDevice(params.name);
         json(res, { ok: true });
+      } catch (e: any) {
+        json(res, { error: e.message }, 400);
+      }
+      return;
+    }
+
+    // Device detail
+    const deviceDetailMatch = path.match(/^\/app\/devices\/(.+)$/);
+    if (req.method === "GET" && deviceDetailMatch) {
+      const name = decodeURIComponent(deviceDetailMatch[1]);
+      const devices = listDevices();
+      const device = devices.find(d => d.name === name);
+      if (!device) { json(res, { error: "Device not found" }, 404); return; }
+      sendHtml(res, appDeviceDetailPage(device, BASE_URL));
+      return;
+    }
+
+    // Bookmarklet page (GET renders, POST executes)
+    if (req.method === "GET" && path === "/app/bookmarklet") {
+      const deviceName = url.searchParams.get("device") ?? "";
+      const articleUrl = url.searchParams.get("url") ?? "";
+      if (!deviceName || !articleUrl) { json(res, { error: "Missing device or url" }, 400); return; }
+      sendHtml(res, appBookmarkletPage(deviceName, articleUrl));
+      return;
+    }
+
+    if (req.method === "POST" && path === "/app/bookmarklet") {
+      const body = JSON.parse(await readBody(req));
+      const { device: deviceName, url: articleUrl } = body;
+      try {
+        const { data, filename, title } = await urlToEpub(articleUrl);
+        await sendToDevice(deviceName, data, filename);
+        json(res, { title });
       } catch (e: any) {
         json(res, { error: e.message }, 400);
       }
