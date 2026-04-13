@@ -831,10 +831,11 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
         <label class="modal-label" for="device-type">Type</label>
         <select class="modal-select" id="device-type">
           <option value="boox">Boox</option>
+          <option value="crosspoint">CrossPoint</option>
           <option value="xteink">Xteink</option>
         </select>
       </div>
-      <div class="modal-field">
+      <div class="modal-field" id="field-email">
         <label class="modal-label" for="device-email">Email</label>
         <input class="modal-input" id="device-email" type="email" autocomplete="off">
       </div>
@@ -850,11 +851,19 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
         <label class="modal-label" for="device-password">Password</label>
         <input class="modal-input" id="device-password" type="password">
       </div>
+      <div class="modal-field" id="field-ip" hidden>
+        <label class="modal-label" for="device-ip">IP Address <span style="font-weight:normal;opacity:0.6">(optional — leave blank to auto-discover)</span></label>
+        <input class="modal-input" id="device-ip" placeholder="192.168.1.100" autocomplete="off">
+      </div>
+      <div class="modal-field" id="field-port" hidden>
+        <label class="modal-label" for="device-port">Port <span style="font-weight:normal;opacity:0.6">(optional, default 81)</span></label>
+        <input class="modal-input" id="device-port" placeholder="81" autocomplete="off">
+      </div>
     </div>
     <div id="add-step-2" hidden>
       <p class="add-message" id="add-message"></p>
-      <div class="modal-field">
-        <label class="modal-label" for="device-code">Verification Code</label>
+      <div class="modal-field" id="field-code">
+        <label class="modal-label" id="code-label" for="device-code">Verification Code</label>
         <input class="modal-input" id="device-code" autocomplete="off">
       </div>
     </div>
@@ -886,60 +895,91 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
 
   const devicesModule = `(function(){
     var typeSelect=document.getElementById("device-type");
+    var emailField=document.getElementById("field-email");
     var regionField=document.getElementById("field-region");
     var passwordField=document.getElementById("field-password");
-    if(typeSelect){typeSelect.addEventListener("change",function(){
-      var isBoox=typeSelect.value==="boox";
+    var ipField=document.getElementById("field-ip");
+    var portField=document.getElementById("field-port");
+    function updateFieldVisibility(){
+      var type=typeSelect.value;
+      var isCrossPoint=type==="crosspoint";
+      var isBoox=type==="boox";
+      emailField.hidden=isCrossPoint;
       regionField.hidden=!isBoox;
-      passwordField.hidden=isBoox;
-    });}
+      passwordField.hidden=isBoox||isCrossPoint;
+      ipField.hidden=!isCrossPoint;
+      portField.hidden=!isCrossPoint;
+    }
+    if(typeSelect){typeSelect.addEventListener("change",updateFieldVisibility);updateFieldVisibility();}
 
     var step1=document.getElementById("add-step-1");
     var step2=document.getElementById("add-step-2");
     var addBtn=document.getElementById("add-submit");
     var addError=document.getElementById("add-error");
     var addMsg=document.getElementById("add-message");
+    var codeLabel=document.getElementById("code-label");
+    var codeField=document.getElementById("field-code");
     var currentStep=1;
     var deviceName="";
+    var deviceType="";
 
     if(addBtn)addBtn.addEventListener("click",function(){
       addError.hidden=true;
       if(currentStep===1){
         deviceName=document.getElementById("device-name").value.trim();
-        var type=document.getElementById("device-type").value;
-        var email=document.getElementById("device-email").value.trim();
-        if(!deviceName||!email){addError.textContent="Name and email are required.";addError.hidden=false;return;}
-        var params={email:email};
-        if(type==="boox")params.region=document.getElementById("device-region").value;
-        else params.password=document.getElementById("device-password").value;
-        addBtn.disabled=true;addBtn.textContent="Connecting...";
-        fetch("/app/devices/add",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:type,name:deviceName,params:params})})
+        deviceType=document.getElementById("device-type").value;
+        var params={};
+        if(deviceType==="crosspoint"){
+          if(!deviceName){addError.textContent="Name is required.";addError.hidden=false;return;}
+          var ip=document.getElementById("device-ip").value.trim();
+          var port=document.getElementById("device-port").value.trim();
+          if(ip)params.ip=ip;
+          if(port)params.port=port;
+        }else{
+          var email=document.getElementById("device-email").value.trim();
+          if(!deviceName||!email){addError.textContent="Name and email are required.";addError.hidden=false;return;}
+          params.email=email;
+          if(deviceType==="boox")params.region=document.getElementById("device-region").value;
+          else params.password=document.getElementById("device-password").value;
+        }
+        addBtn.disabled=true;addBtn.textContent=deviceType==="crosspoint"?"Discovering...":"Connecting...";
+        fetch("/app/devices/add",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:deviceType,name:deviceName,params:params})})
         .then(function(r){return r.json();})
         .then(function(data){
-          addBtn.disabled=false;addBtn.textContent="Verify";
+          addBtn.disabled=false;addBtn.textContent="Confirm";
           if(data.error){addError.textContent=data.error;addError.hidden=false;return;}
           addMsg.textContent=data.message;
+          if(deviceType==="crosspoint"){
+            codeLabel.textContent="Selection";
+            codeField.hidden=false;
+          }else{
+            codeLabel.textContent="Verification Code";
+            codeField.hidden=false;
+          }
           step1.hidden=true;step2.hidden=false;currentStep=2;
         }).catch(function(e){addBtn.disabled=false;addBtn.textContent="Add Device";addError.textContent="Connection failed.";addError.hidden=false;});
       }else{
         var code=document.getElementById("device-code").value.trim();
-        if(!code){addError.textContent="Enter the verification code.";addError.hidden=false;return;}
+        if(!code){addError.textContent=deviceType==="crosspoint"?"Enter the selection number.":"Enter the verification code.";addError.hidden=false;return;}
         addBtn.disabled=true;addBtn.textContent="Verifying...";
-        fetch("/app/devices/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:deviceName,params:{code:code}})})
+        var verifyParams=deviceType==="crosspoint"?{selection:code}:{code:code};
+        fetch("/app/devices/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:deviceName,params:verifyParams})})
         .then(function(r){return r.json();})
         .then(function(data){
-          if(data.error){addBtn.disabled=false;addBtn.textContent="Verify";addError.textContent=data.error;addError.hidden=false;return;}
+          if(data.error){addBtn.disabled=false;addBtn.textContent="Confirm";addError.textContent=data.error;addError.hidden=false;return;}
           location.reload();
-        }).catch(function(e){addBtn.disabled=false;addBtn.textContent="Verify";addError.textContent="Verification failed.";addError.hidden=false;});
+        }).catch(function(e){addBtn.disabled=false;addBtn.textContent="Confirm";addError.textContent="Verification failed.";addError.hidden=false;});
       }
     });
 
     var addModal=document.getElementById("add-device-modal");
     if(addModal){var obs=new MutationObserver(function(){
       if(addModal.hidden){currentStep=1;step1.hidden=false;step2.hidden=true;
-        addBtn.textContent="Add Device";addBtn.disabled=false;addError.hidden=true;
+        addBtn.textContent="Add Device";addBtn.disabled=false;addError.hidden=true;deviceType="";
         document.getElementById("device-name").value="";document.getElementById("device-email").value="";
-        document.getElementById("device-code").value="";document.getElementById("device-password").value="";}
+        document.getElementById("device-code").value="";document.getElementById("device-password").value="";
+        document.getElementById("device-ip").value="";document.getElementById("device-port").value="";
+        updateFieldVisibility();}
     });obs.observe(addModal,{attributes:true,attributeFilter:["hidden"]});}
 
     var removeName="";

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { logger as root } from "../logger.ts";
 import { stateDb } from "../state.ts";
 import { BooxProvider } from "./boox.ts";
+import { CrossPointProvider } from "./crosspoint.ts";
 import { XteinkProvider } from "./xteink.ts";
 
 const log = root.child({ module: "devices" });
@@ -30,6 +31,7 @@ interface PendingAuth {
 
 const providers: Record<string, DeviceProvider> = {
   boox: new BooxProvider(),
+  crosspoint: new CrossPointProvider(),
   xteink: new XteinkProvider(),
 };
 

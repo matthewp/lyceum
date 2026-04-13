@@ -407,11 +407,11 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   // --- Device tools ---
 
   server.registerTool("add_device", {
-    description: "Start adding an e-reader device. For Boox: params should include email and optionally region (us, eu, or cn, defaults to eu). A verification code will be sent. For Xteink: params should include email and password. Logs in and lists bound devices.",
+    description: "Start adding an e-reader device. For Boox: params should include email and optionally region (us, eu, or cn, defaults to eu). A verification code will be sent. For Xteink: params should include email and password. Logs in and lists bound devices. For CrossPoint: no params needed (auto-discovers devices via UDP) or provide {ip, port} for manual entry.",
     inputSchema: {
-      type: z.enum(["boox", "xteink"]).describe("Device type: boox (Boox e-readers via Send2Boox) or xteink (Xteink X3/X4 via XT Cloud)"),
+      type: z.enum(["boox", "xteink", "crosspoint"]).describe("Device type: boox (Boox e-readers via Send2Boox), xteink (Xteink X3/X4 via XT Cloud), or crosspoint (CrossPoint firmware via local network)"),
       name: z.string().describe("A friendly name for this device"),
-      params: z.record(z.string(), z.string()).describe("Type-specific parameters. Boox: {email, region?}. Xteink: {email, password}."),
+      params: z.record(z.string(), z.string()).describe("Type-specific parameters. Boox: {email, region?}. Xteink: {email, password}. CrossPoint: {} for auto-discovery or {ip, port?} for manual entry."),
     },
   }, async ({ type, name, params }) => {
     try {
@@ -428,14 +428,15 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   });
 
   server.registerTool("verify_device", {
-    description: "Complete device setup by providing the verification code received by email.",
+    description: "Complete device setup. For Boox/Xteink: provide the verification code or device selection. For CrossPoint: provide selection (e.g. '1') to pick from discovered devices, or omit to confirm a manually-entered device.",
     inputSchema: {
       name: z.string().describe("The device name used in add_device"),
-      code: z.string().describe("The verification code"),
+      code: z.string().optional().describe("Verification code (Boox/Xteink) or device selection number (CrossPoint)"),
+      selection: z.string().optional().describe("Device selection number for CrossPoint (e.g. '1')"),
     },
-  }, async ({ name, code }) => {
+  }, async ({ name, code, selection }) => {
     try {
-      const device = await verifyDevice(name, { code });
+      const device = await verifyDevice(name, { ...(code ? { code } : {}), ...(selection ? { selection } : {}) });
       return {
         content: [{ type: "text", text: `Device "${device.name}" (${device.type}) added successfully.` }],
       };

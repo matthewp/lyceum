@@ -187,6 +187,16 @@ Send books to [Xteink](https://www.xteink.com/) e-readers (X3, X4) via the XT Cl
 
 Note: The Xteink cloud API communicates over unencrypted HTTP.
 
+### CrossPoint (Xteink)
+
+Send books directly to Xteink devices running [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader), a community-built replacement firmware. This transfers files over your local network via WebSocket — no cloud account required.
+
+Before adding a CrossPoint device, put your e-reader into **File Transfer → Connect to Calibre** mode. Then:
+
+1. **Add device**: No credentials needed. Lyceum broadcasts a UDP discovery packet on the local network and lists found devices. If auto-discovery doesn't work (e.g. due to network segmentation), you can provide `{ip, port}` manually.
+2. **Confirm**: Select which device to use by number.
+3. **Send**: Ask your agent to send any book. The file is transferred directly to the device over WebSocket.
+
 Device credentials are persisted to `lyceum.db` so they survive restarts.
 
 ## OPDS Catalog
