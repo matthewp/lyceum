@@ -4,3 +4,4 @@ dev.sh
 *.db
 *.db-wal
 *.db-shm
+.claude/

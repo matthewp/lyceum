@@ -33,6 +33,7 @@ export interface BookDetail {
   has_cover: boolean;
   cover: string | null;
   read_at: string | null;
+  reading_progress: { percentage: number; device: string; timestamp: number } | null;
   custom_columns: Record<string, { name: string; datatype: string; value: unknown }>;
 }
 

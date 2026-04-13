@@ -645,6 +645,7 @@ export class LocalBackend implements StorageBackend {
       has_cover: row.has_cover === 1,
       cover: null,
       read_at: row.read_at,
+      reading_progress: null,
       custom_columns: {},
     };
   }

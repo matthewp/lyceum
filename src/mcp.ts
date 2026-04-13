@@ -14,6 +14,7 @@ import {
 import { getOpdsSettings, setOpdsSettings } from "./opds.ts";
 import { getKosyncSettings, setKosyncSettings } from "./kosync.ts";
 import { urlToEpub } from "./url-to-epub.ts";
+import { getBookProgress } from "./book-progress.ts";
 
 export function createMcpServer(storage: StorageBackend, baseUrl: string): McpServer {
   const server = new McpServer({
@@ -48,6 +49,7 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
     if (!book) {
       return { content: [{ type: "text", text: "Book not found." }], isError: true };
     }
+    book.reading_progress = await getBookProgress(id, storage);
     return {
       content: [{ type: "text", text: JSON.stringify(book, null, 2) }],
     };

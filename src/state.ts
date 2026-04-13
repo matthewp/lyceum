@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS kosync_progress (
   device TEXT NOT NULL,
   device_id TEXT NOT NULL,
   timestamp INTEGER NOT NULL,
+  book_id INTEGER,
   PRIMARY KEY (document, username)
 );
 `;
@@ -53,3 +54,4 @@ export const stateDb = new Database(join(dataDir, "lyceum.db"));
 stateDb.pragma("journal_mode = WAL");
 stateDb.pragma("foreign_keys = ON");
 stateDb.exec(SCHEMA);
+try { stateDb.exec("ALTER TABLE kosync_progress ADD COLUMN book_id INTEGER"); } catch {} // already exists on existing DBs

@@ -76,18 +76,23 @@ export function verifyKosyncAuth(req: IncomingMessage): { ok: boolean; username?
 // --- Progress CRUD ---
 
 const getProgressStmt = stateDb.prepare(
-  "SELECT document, progress, percentage, device, device_id, timestamp FROM kosync_progress WHERE document = ? AND username = ?"
+  "SELECT document, progress, percentage, device, device_id, timestamp, book_id FROM kosync_progress WHERE document = ? AND username = ?"
+);
+
+const getProgressByBookIdStmt = stateDb.prepare(
+  "SELECT document, progress, percentage, device, device_id, timestamp, book_id FROM kosync_progress WHERE book_id = ? AND username = ?"
 );
 
 const upsertProgressStmt = stateDb.prepare(`
-  INSERT INTO kosync_progress (document, username, progress, percentage, device, device_id, timestamp)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO kosync_progress (document, username, progress, percentage, device, device_id, timestamp, book_id)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(document, username) DO UPDATE SET
     progress = excluded.progress,
     percentage = excluded.percentage,
     device = excluded.device,
     device_id = excluded.device_id,
-    timestamp = excluded.timestamp
+    timestamp = excluded.timestamp,
+    book_id = COALESCE(excluded.book_id, kosync_progress.book_id)
 `);
 
 export interface ProgressRecord {
@@ -97,14 +102,19 @@ export interface ProgressRecord {
   device: string;
   device_id: string;
   timestamp: number;
+  book_id: number | null;
 }
 
 export function getProgress(username: string, document: string): ProgressRecord | null {
   return (getProgressStmt.get(document, username) as ProgressRecord) ?? null;
 }
 
-export function putProgress(username: string, document: string, progress: string, percentage: number, device: string, deviceId: string): number {
+export function getProgressByBookId(username: string, bookId: number): ProgressRecord | null {
+  return (getProgressByBookIdStmt.get(bookId, username) as ProgressRecord) ?? null;
+}
+
+export function putProgress(username: string, document: string, progress: string, percentage: number, device: string, deviceId: string, bookId: number | null = null): number {
   const timestamp = Math.floor(Date.now() / 1000);
-  upsertProgressStmt.run(document, username, progress, percentage, device, deviceId, timestamp);
+  upsertProgressStmt.run(document, username, progress, percentage, device, deviceId, timestamp, bookId);
   return timestamp;
 }

@@ -383,6 +383,34 @@
   transform: scale(1.15);
 }
 
+.detail-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.progress-bar-track {
+  flex: 1;
+  max-width: 160px;
+  height: 4px;
+  background: rgba(245,240,235,0.12);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: rgba(245,240,235,0.5);
+  border-radius: 2px;
+}
+
+.progress-label {
+  font-size: 12px;
+  color: rgba(245,240,235,0.5);
+  white-space: nowrap;
+}
+
 .detail-read-status {
   margin-bottom: 20px;
 }

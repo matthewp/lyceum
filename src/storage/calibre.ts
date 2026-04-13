@@ -124,6 +124,7 @@ function formatBookDetail(raw: any, serverUrl: string): BookDetail {
     has_cover: raw.has_cover ?? false,
     cover: raw.cover ? `${serverUrl}${raw.cover}` : null,
     read_at: raw.user_metadata?.["#read"]?.["#value#"] ?? null,
+    reading_progress: null,
     custom_columns: extractCustomColumns(raw.user_metadata),
   };
 }

@@ -34,6 +34,7 @@ import {
 import { listDevices, addDevice, verifyDevice, removeDevice, sendToDevice } from "./devices/index.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
+import { getBookProgress, findBookIdForDocument } from "./book-progress.ts";
 
 export interface ServerConfig {
   port: number;
@@ -619,7 +620,8 @@ export function startServer(config: ServerConfig) {
       const body = JSON.parse(await readBody(req));
       const { document, progress, percentage, device, device_id } = body;
       if (!document || !progress) { json(res, { message: "Missing required fields" }, 400); return; }
-      const timestamp = putProgress(auth.username!, document, progress, percentage ?? 0, device ?? "", device_id ?? "");
+      const bookId = await findBookIdForDocument(document, storage);
+      const timestamp = putProgress(auth.username!, document, progress, percentage ?? 0, device ?? "", device_id ?? "", bookId);
       json(res, { document, timestamp });
       return;
     }
@@ -862,6 +864,7 @@ export function startServer(config: ServerConfig) {
         json(res, { error: "Book not found" }, 404);
         return;
       }
+      book.reading_progress = await getBookProgress(bookId, storage);
       const devices = listDevices();
       sendHtml(res, viewBookPage(book, "app", undefined, !!process.env.CONVERTER_URL, devices.map(d => d.name)));
       return;
