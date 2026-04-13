@@ -248,15 +248,6 @@ html[data-view="table"] .cover-wall { display: none; }
 
 /* --- Cover wall page overrides (always dark) --- */
 
-.cover-wall-page {
-  background: #0a0908;
-}
-
-.cover-wall-page .header {
-  background: #0a0908;
-  border-bottom-color: rgba(240,232,220,0.07);
-}
-
 .cover-wall-page .container {
   max-width: 1600px;
   padding: 48px 32px;

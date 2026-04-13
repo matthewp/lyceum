@@ -1042,7 +1042,7 @@ export function appDeviceDetailPage(device: { name: string; type: string }, base
     </section>
   </div>`;
 
-  return appLayout(`${device.name} - Lyceum`, ["/public/css/devices.css"], body, "devices");
+  return appLayout(`${device.name} - Lyceum`, ["/public/css/devices.css"], body, "devices", undefined, "cover-wall-page");
 }
 
 export function appBookmarkletPage(deviceName: string, articleUrl: string): SafeHTML {

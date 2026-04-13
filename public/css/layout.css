@@ -199,7 +199,16 @@
   --accent-2-subtle: rgba(56,189,248,0.1);
 }
 
-/* --- Cover wall page: always-dark header --- */
+/* --- Cover wall page: always-dark background and header --- */
+
+.cover-wall-page {
+  background: #0a0908;
+}
+
+.cover-wall-page .header {
+  background: #0a0908;
+  border-bottom-color: rgba(240,232,220,0.07);
+}
 
 .cover-wall-page .header .logo { color: #fbbf24; }
 .cover-wall-page .header .nav a { color: rgba(240,232,220,0.4); }
