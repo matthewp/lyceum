@@ -2,6 +2,7 @@ import { CalibreBackend } from "./storage/calibre.ts";
 import { DiskFileStore } from "./storage/filestore.ts";
 import { openDatabase, insertFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries, bookDirPath, bookFilePath, coverFilePath } from "./storage/database.ts";
 import { extractMetadata } from "./metadata-extract/index.ts";
+import { normalizeToBaselineJpeg } from "./image-normalize.ts";
 import { join } from "node:path";
 import { logger as root } from "./logger.ts";
 
@@ -162,7 +163,7 @@ export async function importFromCalibre(config: ImportConfig) {
       }
 
       if (coverData) {
-        await fileStore.put(coverFilePath(path), coverData);
+        await fileStore.put(coverFilePath(path), await normalizeToBaselineJpeg(coverData));
         db.prepare("UPDATE books SET has_cover = 1 WHERE id = ?").run(bookId);
       }
 

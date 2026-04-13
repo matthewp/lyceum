@@ -5,6 +5,7 @@ import type { FileStore } from "./filestore.ts";
 import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult } from "./types.ts";
 import { extractMetadata } from "../metadata-extract/index.ts";
 import { injectEpubMetadata } from "../epub-inject.ts";
+import { normalizeToBaselineJpeg } from "../image-normalize.ts";
 import { logger as root } from "../logger.ts";
 
 const log = root.child({ module: "local" });
@@ -268,7 +269,7 @@ export class LocalBackend implements StorageBackend {
 
     // Store cover if extracted
     if (meta.cover) {
-      await this.files.put(coverFilePath(bookId.path), meta.cover);
+      await this.files.put(coverFilePath(bookId.path), await normalizeToBaselineJpeg(meta.cover));
       this.db.prepare("UPDATE books SET has_cover = 1 WHERE id = ?").run(bookId.id);
     }
 
@@ -292,7 +293,7 @@ export class LocalBackend implements StorageBackend {
     if (!row.has_cover) {
       const meta = await extractMetadata(data, filename);
       if (meta.cover) {
-        await this.files.put(coverFilePath(row.path), meta.cover);
+        await this.files.put(coverFilePath(row.path), await normalizeToBaselineJpeg(meta.cover));
         this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
       }
     }
@@ -424,7 +425,7 @@ export class LocalBackend implements StorageBackend {
     if (!res.ok) throw new Error(`Failed to download cover image: ${res.status}`);
     const data = Buffer.from(await res.arrayBuffer());
 
-    await this.files.put(coverFilePath(row.path), data);
+    await this.files.put(coverFilePath(row.path), await normalizeToBaselineJpeg(data));
     this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
   }
 
