@@ -2,6 +2,7 @@ import { parseHTML } from "linkedom";
 import { DefuddleClass as Defuddle } from "defuddle/node";
 import { zipSync } from "fflate";
 import { bookFilename } from "./book-filename.ts";
+import { generateArticleCover } from "./generate-cover.ts";
 
 const PRIVATE_IP_RE = /^(127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0|::1$|fc|fd)/i;
 
@@ -77,7 +78,7 @@ function toXhtml(html: string): string {
     .join("");
 }
 
-export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: string; title: string; author: string }> {
+export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: string; title: string; author: string; hostname: string; cover: Buffer }> {
   assertSafeUrl(url);
 
   const response = await fetch(url);
@@ -110,6 +111,8 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
   </rootfiles>
 </container>`;
 
+  const cover = await generateArticleCover(title, author, hostname);
+
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="2.0">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
@@ -120,12 +123,16 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
     <dc:description>${escapeXml(description)}</dc:description>
     <dc:source>${escapeXml(url)}</dc:source>
     <dc:language>${escapeXml(language)}</dc:language>
+    <meta name="cover" content="cover-image"/>
   </metadata>
   <manifest>
     <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="cover-image" href="images/cover.jpg" media-type="image/jpeg"/>
+    <item id="cover-page" href="cover.html" media-type="application/xhtml+xml"/>
     <item id="content" href="content.html" media-type="application/xhtml+xml"/>
   </manifest>
   <spine toc="ncx">
+    <itemref idref="cover-page" linear="no"/>
     <itemref idref="content"/>
   </spine>
 </package>`;
@@ -152,6 +159,18 @@ export async function urlToEpub(url: string): Promise<{ data: Buffer; filename: 
   </navMap>
 </ncx>`;
 
+  const coverHtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>${escapeXml(title)}</title>
+  <style type="text/css">body { margin: 0; padding: 0; } img { max-width: 100%; }</style>
+</head>
+<body>
+  <img src="images/cover.jpg" alt="${escapeXml(title)}"/>
+</body>
+</html>`;
+
   const contentHtml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -170,6 +189,8 @@ ${toXhtml(result.content)}
     "META-INF/container.xml": enc.encode(containerXml),
     "OEBPS/content.opf": enc.encode(opf),
     "OEBPS/toc.ncx": enc.encode(ncx),
+    "OEBPS/cover.html": enc.encode(coverHtml),
+    "OEBPS/images/cover.jpg": [new Uint8Array(cover), { level: 0 }],
     "OEBPS/content.html": enc.encode(contentHtml),
   });
 
@@ -180,5 +201,7 @@ ${toXhtml(result.content)}
     filename,
     title,
     author,
+    hostname,
+    cover,
   };
 }

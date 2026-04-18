@@ -67,6 +67,7 @@ export interface StorageBackend {
   setMetadata(bookId: number, fields: Record<string, unknown>): Promise<void>;
   markRead(bookId: number, readAt: string | null): Promise<void>;
   setCover(bookId: number, imageUrl: string): Promise<void>;
+  setCoverBuffer(bookId: number, buffer: Buffer): Promise<void>;
   removeFormats(bookId: number, formats: string[]): Promise<void>;
   deleteBooks(bookIds: number[]): Promise<void>;
 

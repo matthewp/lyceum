@@ -349,6 +349,20 @@ export class CalibreBackend implements StorageBackend {
     }
   }
 
+  async setCoverBuffer(bookId: number, buffer: Buffer): Promise<void> {
+    const path = this.libraryPath(`/cdb/set-cover/${bookId}`);
+    const url = `${this.serverUrl}${path}`;
+    const res = await this.digestFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: new Uint8Array(buffer),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Failed to set cover (${res.status}): ${body}`);
+    }
+  }
+
   async removeFormats(bookId: number, formats: string[]): Promise<void> {
     const path = this.libraryPath(`/cdb/set-fields/${bookId}`);
     await this.post(path, {

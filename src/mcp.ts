@@ -502,7 +502,13 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
         throw new Error(`Failed to download book (${res.status}): ${body}`);
       }
       const buf = Buffer.from(await res.arrayBuffer());
-      await sendToDevice(device_name, buf, filename);
+      const result = await sendToDevice(device_name, buf, filename);
+      if ("needsRediscovery" in result) {
+        const deviceList = result.devices.length > 0
+          ? `Devices found: ${result.devices.map(d => `${d.ip}:${d.port}`).join(", ")}. Update the device IP via the Lyceum UI or use update_device_ip.`
+          : "No CrossPoint devices found on the network. Make sure the device is in transfer mode.";
+        throw new Error(`Could not connect to "${device_name}" — its IP address may have changed. ${deviceList}`);
+      }
       return {
         content: [{ type: "text", text: `"${book.title}" sent to "${device_name}".` }],
       };
@@ -521,9 +527,10 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
     },
   }, async ({ url }) => {
     try {
-      const { data, filename } = await urlToEpub(url);
+      const { data, filename, cover } = await urlToEpub(url);
       const result = await storage.addBook(filename, data);
       await storage.setMetadata(result.book_id, { tags: ["article"] });
+      await storage.setCoverBuffer(result.book_id, cover);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (e) {
       return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };
@@ -539,7 +546,13 @@ export function createMcpServer(storage: StorageBackend, baseUrl: string): McpSe
   }, async ({ url, device_name }) => {
     try {
       const { data, filename, title } = await urlToEpub(url);
-      await sendToDevice(device_name, data, filename);
+      const result = await sendToDevice(device_name, data, filename);
+      if ("needsRediscovery" in result) {
+        const deviceList = result.devices.length > 0
+          ? `Devices found: ${result.devices.map(d => `${d.ip}:${d.port}`).join(", ")}. Update the device IP via the Lyceum UI.`
+          : "No CrossPoint devices found on the network. Make sure the device is in transfer mode.";
+        throw new Error(`Could not connect to "${device_name}" — its IP address may have changed. ${deviceList}`);
+      }
       return { content: [{ type: "text", text: `"${title}" sent to "${device_name}".` }] };
     } catch (e) {
       return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true };

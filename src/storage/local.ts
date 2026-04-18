@@ -429,6 +429,14 @@ export class LocalBackend implements StorageBackend {
     this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
   }
 
+  async setCoverBuffer(bookId: number, buffer: Buffer): Promise<void> {
+    const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(bookId) as { path: string } | undefined;
+    if (!row) throw new Error(`Book ${bookId} not found`);
+
+    await this.files.put(coverFilePath(row.path), await normalizeToBaselineJpeg(buffer));
+    this.db.prepare("UPDATE books SET has_cover = 1, updated_at = datetime('now') WHERE id = ?").run(bookId);
+  }
+
   async removeFormats(bookId: number, formats: string[]): Promise<void> {
     const row = this.db.prepare("SELECT path FROM books WHERE id = ?").get(bookId) as { path: string } | undefined;
     if (!row) throw new Error(`Book ${bookId} not found`);
