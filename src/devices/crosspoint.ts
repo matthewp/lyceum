@@ -8,7 +8,18 @@ const DISCOVERY_PORTS = [8134, 54982, 48123, 39001, 44044, 59678];
 const DEFAULT_PORT = 81;
 const CHUNK_SIZE = 4096;
 
-async function discoverCrossPointDevices(
+export class CrossPointConnectionError extends Error {
+  readonly ip: string;
+  readonly port: number;
+  constructor(ip: string, port: number) {
+    super(`Could not connect to CrossPoint device at ${ip}:${port}`);
+    this.name = "CrossPointConnectionError";
+    this.ip = ip;
+    this.port = port;
+  }
+}
+
+export async function discoverCrossPointDevices(
   timeoutMs = 2000,
 ): Promise<Array<{ ip: string; port: number }>> {
   return new Promise((resolve) => {
@@ -99,7 +110,7 @@ export async function sendViaWebSocket(
     });
 
     ws.addEventListener("error", () => {
-      reject(new Error(`WebSocket error connecting to ${url}`));
+      reject(new CrossPointConnectionError(ip, port));
     });
 
     ws.addEventListener("close", () => {
@@ -113,12 +124,13 @@ export async function sendViaWebSocket(
 export class CrossPointProvider implements DeviceProvider {
   private pendingDiscovery: Array<{ ip: string; port: number }> | null = null;
 
-  async startAuth(params: Record<string, string>): Promise<{ message: string }> {
+  async startAuth(params: Record<string, string>): Promise<{ message: string; devices?: Array<{ ip: string; port: number }> }> {
     if (params.ip) {
       const port = params.port ? parseInt(params.port, 10) : DEFAULT_PORT;
       this.pendingDiscovery = [{ ip: params.ip, port }];
       return {
-        message: `CrossPoint device at ${params.ip}:${port} ready. Call verify_device with selection "1" to confirm.`,
+        message: `CrossPoint device at ${params.ip}:${port} ready. Select it below to confirm.`,
+        devices: [{ ip: params.ip, port }],
       };
     }
 
@@ -135,15 +147,14 @@ export class CrossPointProvider implements DeviceProvider {
 
     if (found.length === 1) {
       return {
-        message: `Found 1 CrossPoint device at ${found[0].ip}:${found[0].port}. Enter selection "1" to confirm.`,
+        message: `Found 1 CrossPoint device. Select it below to confirm.`,
+        devices: found,
       };
     }
 
-    const list = found
-      .map((d, i) => `${i + 1}. ${d.ip}:${d.port}`)
-      .join("\n");
     return {
-      message: `Found ${found.length} CrossPoint devices:\n${list}\nEnter the number of the device you want to use.`,
+      message: `Found ${found.length} CrossPoint devices. Select the one you want to add.`,
+      devices: found,
     };
   }
 

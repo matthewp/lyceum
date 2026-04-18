@@ -231,3 +231,39 @@
 .bml-back {
   margin-top: 8px;
 }
+
+/* Bookmarklet rediscovery buttons — compact and centered */
+.bml-card .device-select-list {
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.bml-card .device-pick-btn {
+  width: auto;
+  text-align: center;
+  padding: 10px 28px;
+}
+
+.bml-rediscover-hint {
+  font-size: 0.78em;
+  color: rgba(240,232,220,0.35);
+  margin-top: -4px;
+  margin-bottom: 0;
+}
+
+.device-ip {
+  color: rgba(240,232,220,0.4);
+  font-size: 0.82em;
+  margin-top: 4px;
+  margin-bottom: 24px;
+}
+
+.device-ip-addr {
+  font-family: var(--font-mono);
+  color: rgba(240,232,220,0.6);
+  background: rgba(240,232,220,0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+

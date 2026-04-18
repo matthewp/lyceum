@@ -2,15 +2,20 @@ import { randomUUID } from "node:crypto";
 import { logger as root } from "../logger.ts";
 import { stateDb } from "../state.ts";
 import { BooxProvider } from "./boox.ts";
-import { CrossPointProvider } from "./crosspoint.ts";
+import { CrossPointConnectionError, CrossPointProvider, discoverCrossPointDevices } from "./crosspoint.ts";
 import { XteinkProvider } from "./xteink.ts";
 
 const log = root.child({ module: "devices" });
 
 // --- Interfaces ---
 
+export interface DiscoveredDevice {
+  ip: string;
+  port: number;
+}
+
 export interface DeviceProvider {
-  startAuth(params: Record<string, string>): Promise<{ message: string }>;
+  startAuth(params: Record<string, string>): Promise<{ message: string; devices?: DiscoveredDevice[] }>;
   completeAuth(params: Record<string, string>): Promise<DeviceInfo>;
   sendFile(device: DeviceInfo, file: Buffer, filename: string): Promise<void>;
 }
@@ -45,7 +50,7 @@ export async function addDevice(
   type: string,
   name: string,
   params: Record<string, string>,
-): Promise<{ message: string }> {
+): Promise<{ message: string; devices?: DiscoveredDevice[] }> {
   const provider = providers[type];
   if (!provider) throw new Error(`Unknown device type: ${type}. Supported: ${Object.keys(providers).join(", ")}`);
 
@@ -86,17 +91,38 @@ export function listDevices(): { id: string; name: string; type: string }[] {
   return stateDb.prepare("SELECT id, name, type FROM devices").all() as { id: string; name: string; type: string }[];
 }
 
+export function getDevice(name: string): DeviceInfo | undefined {
+  const row = stateDb.prepare("SELECT id, name, type, credentials FROM devices WHERE name = ?").get(name) as { id: string; name: string; type: string; credentials: string } | undefined;
+  if (!row) return undefined;
+  return { id: row.id, name: row.name, type: row.type, credentials: JSON.parse(row.credentials) };
+}
+
 export function removeDevice(name: string): void {
   const result = stateDb.prepare("DELETE FROM devices WHERE name = ?").run(name);
   if (result.changes === 0) throw new Error(`Device "${name}" not found`);
   log.info({ name }, "Device removed");
 }
 
+export interface SendToDeviceResult {
+  ok: true;
+}
+
+export interface SendToDeviceRediscovery {
+  needsRediscovery: true;
+  devices: DiscoveredDevice[];
+}
+
+export function updateDeviceCredentials(name: string, credentials: Record<string, string>): void {
+  const result = stateDb.prepare("UPDATE devices SET credentials = ? WHERE name = ?").run(JSON.stringify(credentials), name);
+  if (result.changes === 0) throw new Error(`Device "${name}" not found`);
+  log.info({ name }, "Updated device credentials");
+}
+
 export async function sendToDevice(
   deviceName: string,
   file: Buffer,
   filename: string,
-): Promise<void> {
+): Promise<SendToDeviceResult | SendToDeviceRediscovery> {
   const row = stateDb.prepare("SELECT id, name, type, credentials FROM devices WHERE name = ?").get(deviceName) as { id: string; name: string; type: string; credentials: string } | undefined;
   if (!row) throw new Error(`Device "${deviceName}" not found`);
   const device: DeviceInfo = { id: row.id, name: row.name, type: row.type, credentials: JSON.parse(row.credentials) };
@@ -104,6 +130,16 @@ export async function sendToDevice(
   const provider = providers[device.type];
   if (!provider) throw new Error(`No provider for device type "${device.type}"`);
 
-  await provider.sendFile(device, file, filename);
-  log.info({ device: deviceName }, "Sent to device");
+  try {
+    await provider.sendFile(device, file, filename);
+    log.info({ device: deviceName }, "Sent to device");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof CrossPointConnectionError) {
+      log.info({ device: deviceName }, "CrossPoint connection failed, running rediscovery");
+      const devices = await discoverCrossPointDevices();
+      return { needsRediscovery: true, devices };
+    }
+    throw e;
+  }
 }

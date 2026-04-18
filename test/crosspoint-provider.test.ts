@@ -8,7 +8,7 @@ test("startAuth with manual IP stores pending device and returns confirmation", 
   const provider = new CrossPointProvider();
   const result = await provider.startAuth({ ip: "192.168.1.100", port: "81" });
   assert.ok(result.message.includes("192.168.1.100:81"));
-  assert.ok(result.message.includes("verify_device"));
+  assert.deepEqual(result.devices, [{ ip: "192.168.1.100", port: 81 }]);
 });
 
 test("startAuth with manual IP uses default port 81 when port omitted", async () => {

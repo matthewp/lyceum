@@ -32,7 +32,7 @@ import {
   verifyKosyncAuth, verifyKosyncCredentials, getKosyncSettings, setKosyncSettings,
   getProgress, putProgress,
 } from "./kosync.ts";
-import { listDevices, addDevice, verifyDevice, removeDevice, sendToDevice } from "./devices/index.ts";
+import { listDevices, getDevice, addDevice, verifyDevice, removeDevice, sendToDevice, updateDeviceCredentials } from "./devices/index.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
 import { getBookProgress, findBookIdForDocument } from "./book-progress.ts";
@@ -791,8 +791,7 @@ export function startServer(config: ServerConfig) {
     const deviceDetailMatch = path.match(/^\/app\/devices\/(.+)$/);
     if (req.method === "GET" && deviceDetailMatch) {
       const name = decodeURIComponent(deviceDetailMatch[1]);
-      const devices = listDevices();
-      const device = devices.find(d => d.name === name);
+      const device = getDevice(name);
       if (!device) { json(res, { error: "Device not found" }, 404); return; }
       sendHtml(res, appDeviceDetailPage(device, BASE_URL));
       return;
@@ -812,7 +811,12 @@ export function startServer(config: ServerConfig) {
       const { device: deviceName, url: articleUrl } = body;
       try {
         const { data, filename, title } = await urlToEpub(articleUrl);
-        await sendToDevice(deviceName, data, filename);
+        const result = await sendToDevice(deviceName, data, filename);
+        log.info({ device: deviceName, result }, "Bookmarklet send result");
+        if ("needsRediscovery" in result) {
+          json(res, { needsRediscovery: true, devices: result.devices });
+          return;
+        }
         json(res, { title });
       } catch (e: any) {
         json(res, { error: e.message }, 400);
@@ -947,6 +951,7 @@ export function startServer(config: ServerConfig) {
       const deviceName = params.get("device");
       if (!format || !deviceName) { json(res, { error: "format and device required" }, 400); return; }
 
+      log.info({ bookId, format, device: deviceName }, "Send to device request");
       try {
         const book = await storage.getBook(bookId);
         if (!book) { json(res, { error: "Book not found" }, 404); return; }
@@ -957,9 +962,30 @@ export function startServer(config: ServerConfig) {
         const dlRes = await storage.downloadBook(downloadPath);
         if (!dlRes.ok) { json(res, { error: "Failed to download book" }, 500); return; }
         const buf = Buffer.from(await dlRes.arrayBuffer());
-        await sendToDevice(deviceName, buf, filename);
+        const result = await sendToDevice(deviceName, buf, filename);
+        log.info({ device: deviceName, result }, "Send to device result");
+        json(res, result);
+      } catch (e: any) {
+        log.error({ device: deviceName, err: e.message }, "Send to device error");
+        json(res, { error: e.message }, 500);
+      }
+      return;
+    }
+
+    // Update CrossPoint device IP after rediscovery
+    const updateIpMatch = path.match(/^\/app\/devices\/([^/]+)\/update-ip$/);
+    if (req.method === "POST" && updateIpMatch) {
+      const deviceName = decodeURIComponent(updateIpMatch[1]);
+      const body = await readBody(req);
+      const params = JSON.parse(body);
+      log.info({ device: deviceName, ip: params.ip, port: params.port }, "Update device IP request");
+      if (!params.ip || !params.port) { json(res, { error: "ip and port required" }, 400); return; }
+      try {
+        updateDeviceCredentials(deviceName, { ip: params.ip, port: String(params.port) });
+        log.info({ device: deviceName, ip: params.ip, port: params.port }, "Device IP updated");
         json(res, { ok: true });
       } catch (e: any) {
+        log.error({ device: deviceName, err: e.message }, "Update device IP error");
         json(res, { error: e.message }, 500);
       }
       return;

@@ -194,3 +194,43 @@
     max-height: 90vh;
   }
 }
+
+
+/* Device pick buttons (add-device flow and send rediscovery) */
+.device-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.device-pick-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(240,232,220,0.05);
+  border: 1px solid rgba(240,232,220,0.15);
+  border-radius: 6px;
+  color: rgba(240,232,220,0.85);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+.device-pick-btn:hover {
+  background: rgba(236,72,153,0.08);
+  border-color: rgba(236,72,153,0.35);
+  color: #ec4899;
+}
+.device-pick-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.fmt-rediscover-msg {
+  color: rgba(240,232,220,0.7);
+  font-size: 0.9em;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}

@@ -430,6 +430,11 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
           <button class="btn btn-danger" id="fmt-confirm-remove">Remove</button>
         </div>
       </div>
+      <div id="fmt-step-rediscover" hidden>
+        <p class="fmt-rediscover-msg" id="fmt-rediscover-msg"></p>
+        <div class="device-select-list" id="fmt-device-select-list"></div>
+        <p class="modal-error" id="fmt-rediscover-error" hidden></p>
+      </div>
     `, html`
       <button class="btn btn-ghost" data-modal-close id="fmt-close-btn">Close</button>
     `);
@@ -470,6 +475,10 @@ var modal=document.getElementById('format-modal');if(!modal)return;
 var title=modal.querySelector('.modal-title');
 var stepActions=document.getElementById('fmt-step-actions');
 var stepConfirm=document.getElementById('fmt-step-confirm');
+var stepRediscover=document.getElementById('fmt-step-rediscover');
+var rediscoverMsg=document.getElementById('fmt-rediscover-msg');
+var rediscoverList=document.getElementById('fmt-device-select-list');
+var rediscoverError=document.getElementById('fmt-rediscover-error');
 var confirmName=document.getElementById('fmt-confirm-name');
 var confirmBtn=document.getElementById('fmt-confirm-remove');
 var confirmCancel=document.getElementById('fmt-confirm-cancel');
@@ -479,9 +488,10 @@ var sendStatus=document.getElementById('fmt-send-status');
 var closeBtn=document.getElementById('fmt-close-btn');
 var footer=closeBtn.parentElement;
 var currentFormat='';
+var pendingDevice='';
 
 function closeModal(){modal.classList.remove('open');modal.addEventListener('transitionend',function h(){modal.hidden=true;modal.removeEventListener('transitionend',h);});}
-function resetModal(){stepActions.hidden=false;stepConfirm.hidden=true;footer.hidden=false;sendStatus.hidden=true;sendStatus.textContent='';sendStatus.className='fmt-send-status';}
+function resetModal(){stepActions.hidden=false;stepConfirm.hidden=true;stepRediscover.hidden=true;footer.hidden=false;sendStatus.hidden=true;sendStatus.textContent='';sendStatus.className='fmt-send-status';rediscoverList.innerHTML='';rediscoverError.hidden=true;pendingDevice='';}
 
 document.getElementById('book-formats').addEventListener('click',function(e){
   var badge=e.target.closest('[data-format]');if(!badge)return;
@@ -516,19 +526,71 @@ confirmBtn.addEventListener('click',function(){
   });
 });
 
+function doSend(device,sendBtn){
+  console.log('[lyceum] doSend called', {device:device, format:currentFormat});
+  sendStatus.hidden=false;sendStatus.textContent='Sending to '+device+'...';sendStatus.className='fmt-send-status';
+  if(sendBtn)sendBtn.disabled=true;
+  fetch(location.pathname+'/send-to-device',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'format='+encodeURIComponent(currentFormat)+'&device='+encodeURIComponent(device)}).then(function(r){
+    console.log('[lyceum] send-to-device HTTP status', r.status);
+    return r.json();
+  }).then(function(data){
+    console.log('[lyceum] send-to-device response', JSON.stringify(data));
+    if(data.error)throw new Error(data.error);
+    if(data.needsRediscovery){
+      console.log('[lyceum] showing rediscovery UI, devices:', data.devices);
+      sendStatus.hidden=true;
+      pendingDevice=device;
+      rediscoverList.innerHTML='';
+      rediscoverError.hidden=true;
+      if(!data.devices||data.devices.length===0){
+        rediscoverMsg.textContent='Could not reach '+device+' and no CrossPoint devices were found on the network. Make sure your device is in transfer mode and try again.';
+      }else if(data.devices.length===1){
+        rediscoverMsg.textContent='Could not reach '+device+' at its saved address. A CrossPoint device was found at a new address — is this your device?';
+      }else{
+        rediscoverMsg.textContent='Could not reach '+device+' at its saved address. Select your device from the list below.';
+      }
+      data.devices.forEach(function(d){
+        var btn=document.createElement('button');
+        btn.type='button';btn.className='device-pick-btn';
+        btn.textContent=d.ip+':'+d.port;
+        btn.addEventListener('click',function(){
+          console.log('[lyceum] device pick clicked', {ip:d.ip, port:d.port});
+          rediscoverError.hidden=true;
+          btn.disabled=true;
+          fetch('/app/devices/'+encodeURIComponent(device)+'/update-ip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:d.ip,port:d.port})}).then(function(r){
+            console.log('[lyceum] update-ip HTTP status', r.status);
+            return r.json();
+          }).then(function(upd){
+            console.log('[lyceum] update-ip response', JSON.stringify(upd));
+            if(upd.error)throw new Error(upd.error);
+            stepRediscover.hidden=true;
+            stepActions.hidden=false;
+            doSend(device,null);
+          }).catch(function(err){
+            console.log('[lyceum] update-ip error', err.message);
+            btn.disabled=false;
+            rediscoverError.textContent=err.message||'Failed to update device address.';rediscoverError.hidden=false;
+          });
+        });
+        rediscoverList.appendChild(btn);
+      });
+      stepActions.hidden=true;
+      stepRediscover.hidden=false;
+      return;
+    }
+    console.log('[lyceum] send success');
+    sendStatus.textContent='Sent to '+device;sendStatus.className='fmt-send-status fmt-success';
+    if(sendBtn)sendBtn.disabled=false;
+  }).catch(function(err){
+    console.log('[lyceum] send error', err.message);
+    sendStatus.hidden=false;sendStatus.textContent=err.message||'Failed to send';sendStatus.className='fmt-send-status fmt-error';
+    if(sendBtn)sendBtn.disabled=false;
+  });
+}
+
 modal.addEventListener('click',function(e){
   var sendBtn=e.target.closest('[data-send-device]');if(!sendBtn)return;
-  var device=sendBtn.dataset.sendDevice;
-  sendStatus.hidden=false;sendStatus.textContent='Sending to '+device+'...';sendStatus.className='fmt-send-status';
-  sendBtn.disabled=true;
-  fetch(location.pathname+'/send-to-device',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'format='+encodeURIComponent(currentFormat)+'&device='+encodeURIComponent(device)}).then(function(r){return r.json();}).then(function(data){
-    if(data.error)throw new Error(data.error);
-    sendStatus.textContent='Sent to '+device;sendStatus.className='fmt-send-status fmt-success';
-    sendBtn.disabled=false;
-  }).catch(function(err){
-    sendStatus.textContent=err.message||'Failed to send';sendStatus.className='fmt-send-status fmt-error';
-    sendBtn.disabled=false;
-  });
+  doSend(sendBtn.dataset.sendDevice,sendBtn);
 });
 
 var obs=new MutationObserver(function(){if(modal.hidden)resetModal();});
@@ -862,9 +924,12 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
     </div>
     <div id="add-step-2" hidden>
       <p class="add-message" id="add-message"></p>
-      <div class="modal-field" id="field-code">
+      <div id="field-code">
         <label class="modal-label" id="code-label" for="device-code">Verification Code</label>
         <input class="modal-input" id="device-code" autocomplete="off">
+      </div>
+      <div id="field-devices" hidden>
+        <div class="device-select-list" id="device-select-list"></div>
       </div>
     </div>
     <p class="modal-error" id="add-error" hidden></p>
@@ -919,9 +984,22 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
     var addMsg=document.getElementById("add-message");
     var codeLabel=document.getElementById("code-label");
     var codeField=document.getElementById("field-code");
+    var devicesField=document.getElementById("field-devices");
+    var deviceSelectList=document.getElementById("device-select-list");
     var currentStep=1;
     var deviceName="";
     var deviceType="";
+
+    function verifyWithSelection(selection){
+      addError.hidden=true;
+      addBtn.disabled=true;addBtn.textContent="Verifying...";
+      fetch("/app/devices/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:deviceName,params:{selection:selection}})})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        if(data.error){addBtn.disabled=false;addBtn.textContent="Confirm";addError.textContent=data.error;addError.hidden=false;return;}
+        location.reload();
+      }).catch(function(e){addBtn.disabled=false;addBtn.textContent="Confirm";addError.textContent="Verification failed.";addError.hidden=false;});
+    }
 
     if(addBtn)addBtn.addEventListener("click",function(){
       addError.hidden=true;
@@ -946,15 +1024,28 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
         fetch("/app/devices/add",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:deviceType,name:deviceName,params:params})})
         .then(function(r){return r.json();})
         .then(function(data){
-          addBtn.disabled=false;addBtn.textContent="Confirm";
-          if(data.error){addError.textContent=data.error;addError.hidden=false;return;}
+          addBtn.disabled=false;
+          if(data.error){addBtn.textContent="Add Device";addError.textContent=data.error;addError.hidden=false;return;}
           addMsg.textContent=data.message;
-          if(deviceType==="crosspoint"){
-            codeLabel.textContent="Selection";
-            codeField.hidden=false;
+          if(deviceType==="crosspoint"&&data.devices&&data.devices.length>0){
+            deviceSelectList.innerHTML="";
+            data.devices.forEach(function(d,i){
+              var btn=document.createElement("button");
+              btn.type="button";
+              btn.className="device-pick-btn";
+              btn.textContent=d.ip+":"+d.port;
+              btn.dataset.index=String(i+1);
+              btn.addEventListener("click",function(){verifyWithSelection(btn.dataset.index);});
+              deviceSelectList.appendChild(btn);
+            });
+            codeField.hidden=true;
+            devicesField.hidden=false;
+            addBtn.hidden=true;
           }else{
-            codeLabel.textContent="Verification Code";
+            codeLabel.textContent=deviceType==="crosspoint"?"Selection":"Verification Code";
             codeField.hidden=false;
+            devicesField.hidden=true;
+            addBtn.textContent="Confirm";
           }
           step1.hidden=true;step2.hidden=false;currentStep=2;
         }).catch(function(e){addBtn.disabled=false;addBtn.textContent="Add Device";addError.textContent="Connection failed.";addError.hidden=false;});
@@ -975,7 +1066,8 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
     var addModal=document.getElementById("add-device-modal");
     if(addModal){var obs=new MutationObserver(function(){
       if(addModal.hidden){currentStep=1;step1.hidden=false;step2.hidden=true;
-        addBtn.textContent="Add Device";addBtn.disabled=false;addError.hidden=true;deviceType="";
+        addBtn.textContent="Add Device";addBtn.disabled=false;addBtn.hidden=false;addError.hidden=true;deviceType="";
+        codeField.hidden=false;devicesField.hidden=true;deviceSelectList.innerHTML="";
         document.getElementById("device-name").value="";document.getElementById("device-email").value="";
         document.getElementById("device-code").value="";document.getElementById("device-password").value="";
         document.getElementById("device-ip").value="";document.getElementById("device-port").value="";
@@ -1019,10 +1111,14 @@ export function appDevicesPage(devices: { id: string; name: string; type: string
   return appLayout("Devices - Lyceum", ["/public/css/book-table.css", "/public/css/devices.css"], body, "devices", devicesModule, "cover-wall-page");
 }
 
-export function appDeviceDetailPage(device: { name: string; type: string }, baseUrl: string): SafeHTML {
+export function appDeviceDetailPage(device: { name: string; type: string; credentials?: Record<string, string> }, baseUrl: string): SafeHTML {
   const typeLabel = device.type.charAt(0).toUpperCase() + device.type.slice(1);
   const deviceParam = encodeURIComponent(device.name);
   const bookmarkletHref = `javascript:location.href='${baseUrl}/app/bookmarklet?device=${deviceParam}&url='+encodeURIComponent(location.href)`;
+
+  const ipInfo = device.type === "crosspoint" && device.credentials?.ip
+    ? html`<p class="device-ip">Registered address: <code class="device-ip-addr">${device.credentials.ip}:${device.credentials.port ?? "81"}</code></p>`
+    : html``;
 
   const body = html`
   <div class="container">
@@ -1032,6 +1128,7 @@ export function appDeviceDetailPage(device: { name: string; type: string }, base
         <h1 class="page-title">${device.name} <span class="device-type-badge">${typeLabel}</span></h1>
       </div>
     </div>
+    ${ipInfo}
     <section class="device-section">
       <h2 class="section-title">Bookmarklet</h2>
       <p class="section-desc">Drag the button below to your browser's bookmarks bar. Clicking it on any article will send it to this device.</p>
@@ -1051,48 +1148,108 @@ export function appBookmarkletPage(deviceName: string, articleUrl: string): Safe
     var goBack = document.getElementById("bml-back");
     var spinnerEl = document.getElementById("bml-spinner");
     var countdownEl = document.getElementById("bml-countdown");
+    var deviceListEl = document.getElementById("bml-device-list");
     var articleUrl = ${JSON.stringify(articleUrl)};
     var deviceName = ${JSON.stringify(deviceName)};
     var timer = null;
 
     goBack.addEventListener("click", function() {
       if (timer) clearInterval(timer);
+      history.back();
     });
 
-    fetch("/app/bookmarklet", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device: deviceName, url: articleUrl })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      spinnerEl.hidden = true;
-      if (data.error) {
-        statusEl.textContent = "Error: " + data.error;
-        statusEl.className = "bml-status bml-error";
-      } else {
-        statusEl.textContent = "Sent \\u201c" + data.title + "\\u201d to " + deviceName + ".";
-        statusEl.className = "bml-status bml-success";
-        var countdown = 10;
-        countdownEl.textContent = "Redirecting in " + countdown + "s\\u2026";
-        countdownEl.hidden = false;
-        timer = setInterval(function() {
-          countdown--;
-          countdownEl.textContent = "Redirecting in " + countdown + "s\\u2026";
-          if (countdown <= 0) {
-            clearInterval(timer);
-            location.href = articleUrl;
+    function doSend() {
+      spinnerEl.hidden = false;
+      statusEl.textContent = "Sending to " + deviceName + "\\u2026";
+      statusEl.className = "bml-status bml-pending";
+      deviceListEl.innerHTML = "";
+      deviceListEl.hidden = true;
+      goBack.hidden = true;
+      fetch("/app/bookmarklet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device: deviceName, url: articleUrl })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        spinnerEl.hidden = true;
+        if (data.needsRediscovery) {
+          if (!data.devices || data.devices.length === 0) {
+            statusEl.textContent = "Could not reach " + deviceName + " and no CrossPoint devices were found. Make sure your device is in transfer mode and try again.";
+            statusEl.className = "bml-status bml-error";
+          } else if (data.devices.length === 1) {
+            statusEl.textContent = "Could not reach " + deviceName + " at its saved address, but found a CrossPoint device at a new address. Is this yours?";
+            statusEl.className = "bml-status bml-error";
+          } else {
+            statusEl.textContent = "Could not reach " + deviceName + " at its saved address. Select your device below.";
+            statusEl.className = "bml-status bml-error";
           }
-        }, 1000);
-      }
-      goBack.hidden = false;
-    })
-    .catch(function(e) {
-      spinnerEl.hidden = true;
-      statusEl.textContent = "Error: " + e.message;
-      statusEl.className = "bml-status bml-error";
-      goBack.hidden = false;
-    });
+          data.devices.forEach(function(d) {
+            var btn = document.createElement("button");
+            btn.className = "device-pick-btn";
+            btn.textContent = d.ip + ":" + d.port;
+            var hint = document.createElement("p");
+            hint.className = "bml-rediscover-hint";
+            hint.textContent = "Tap to confirm and resend";
+            btn.addEventListener("click", function() {
+              btn.disabled = true;
+              deviceListEl.hidden = true;
+              spinnerEl.hidden = false;
+              statusEl.textContent = "Updating device address\\u2026";
+              statusEl.className = "bml-status bml-pending";
+              fetch("/app/devices/" + encodeURIComponent(deviceName) + "/update-ip", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ip: d.ip, port: d.port })
+              })
+              .then(function(r) { return r.json(); })
+              .then(function(upd) {
+                if (upd.error) throw new Error(upd.error);
+                doSend();
+              })
+              .catch(function(e) {
+                spinnerEl.hidden = true;
+                statusEl.textContent = "Error: " + e.message;
+                statusEl.className = "bml-status bml-error";
+                goBack.hidden = false;
+              });
+            });
+            deviceListEl.appendChild(btn);
+            deviceListEl.appendChild(hint);
+          });
+          deviceListEl.hidden = false;
+          goBack.hidden = false;
+          return;
+        }
+        if (data.error) {
+          statusEl.textContent = "Error: " + data.error;
+          statusEl.className = "bml-status bml-error";
+        } else {
+          statusEl.textContent = "Sent \\u201c" + data.title + "\\u201d to " + deviceName + ".";
+          statusEl.className = "bml-status bml-success";
+          var countdown = 10;
+          countdownEl.textContent = "Redirecting in " + countdown + "s\\u2026";
+          countdownEl.hidden = false;
+          timer = setInterval(function() {
+            countdown--;
+            countdownEl.textContent = "Redirecting in " + countdown + "s\\u2026";
+            if (countdown <= 0) {
+              clearInterval(timer);
+              history.back();
+            }
+          }, 1000);
+        }
+        goBack.hidden = false;
+      })
+      .catch(function(e) {
+        spinnerEl.hidden = true;
+        statusEl.textContent = "Error: " + e.message;
+        statusEl.className = "bml-status bml-error";
+        goBack.hidden = false;
+      });
+    }
+
+    doSend();
   })();`;
 
   const body = html`
@@ -1100,8 +1257,9 @@ export function appBookmarkletPage(deviceName: string, articleUrl: string): Safe
     <div class="bml-card">
       <div class="bml-spinner" id="bml-spinner"></div>
       <p class="bml-status bml-pending" id="bml-status">Sending to ${deviceName}&hellip;</p>
+      <div class="device-select-list" id="bml-device-list" hidden></div>
       <p class="bml-countdown" id="bml-countdown" hidden></p>
-      <a href="${articleUrl}" class="btn btn-ghost bml-back" id="bml-back" hidden>Go back</a>
+      <button class="btn btn-ghost bml-back" id="bml-back" hidden>Go back</button>
     </div>
   </div>`;
 
