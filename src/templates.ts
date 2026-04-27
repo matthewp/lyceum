@@ -383,14 +383,14 @@ export function viewBookPage(book: any, mode: "app" | "mcp", coverDataUrl?: stri
     )}</form>`;
 
     const progress = book.reading_progress ?? null;
-    const progressBlock = progress
+    const readAt: string | null = book.read_at ?? null;
+    const progressBlock = progress && !readAt
       ? html`<div class="detail-progress">
           <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${Math.round(progress.percentage)}%"></div></div>
           <span class="progress-label">${Math.round(progress.percentage)}%${progress.device ? unsafeHTML(` &middot; ${escapeHtml(progress.device)}`) : ""}</span>
         </div>`
       : html``;
 
-    const readAt: string | null = book.read_at ?? null;
     const readAtDate = readAt ? new Date(readAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : null;
     const readBlock = html`<div class="detail-read-status">
       <form method="POST" action="/app/book/${book.id}/read">
