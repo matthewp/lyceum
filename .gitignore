@@ -5,3 +5,6 @@ dev.sh
 *.db-wal
 *.db-shm
 .claude/
+.codex/
+.opencode/
+.agents/skills/
