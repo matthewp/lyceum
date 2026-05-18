@@ -179,6 +179,7 @@
 
 /* --- Book detail page: force dark variables throughout --- */
 
+[data-page="book-detail-page"] body,
 .book-detail-page {
   background: #0a0908;
   --bg: #0a0908;
@@ -201,6 +202,7 @@
 
 /* --- Cover wall page: always-dark background and header --- */
 
+[data-page="cover-wall-page"] body,
 .cover-wall-page {
   background: #0a0908;
 }
@@ -337,7 +339,7 @@
 .grid-icon {
   transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-body.sidebar-open .grid-icon {
+[data-sidebar="open"] .grid-icon {
   transform: rotate(45deg);
 }
 
@@ -347,7 +349,7 @@ body.sidebar-open .grid-icon {
 .sidebar-toggle:hover .grid-icon {
   transform: rotate(8deg);
 }
-body.sidebar-open .sidebar-toggle:hover .grid-icon {
+[data-sidebar="open"] .sidebar-toggle:hover .grid-icon {
   transform: rotate(53deg);
 }
 .sidebar-toggle:hover .grid-tl { transform: translate(-2px, -2px); }
@@ -372,7 +374,7 @@ body.sidebar-open .sidebar-toggle:hover .grid-icon {
   padding: 16px 0;
 }
 
-body.sidebar-open .sidebar {
+[data-sidebar="open"] .sidebar {
   transform: translateX(0);
 }
 
@@ -413,7 +415,7 @@ body.sidebar-open .sidebar {
   transition: margin-left 250ms ease;
 }
 
-body.sidebar-open .main-wrap {
+[data-sidebar="open"] .main-wrap {
   margin-left: 220px;
 }
 

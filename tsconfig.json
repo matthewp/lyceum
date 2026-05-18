@@ -6,8 +6,9 @@
     "rewriteRelativeImportExtensions": true,
     "noEmit": true,
     "strict": true,
+    "erasableSyntaxOnly": true,
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src", "scripts"]
 }

@@ -1,0 +1,31 @@
+import { View, Aside, Nav, Anchor, computed } from "@matthewp/zebra";
+import { libraryIcon, devicesIcon, settingsIcon } from "./icons.ts";
+import type { NavSection } from "../routes.ts";
+
+export class Sidebar extends View {
+  private activeNav: () => NavSection;
+
+  constructor(activeNav: () => NavSection) {
+    super();
+    this.activeNav = activeNav;
+  }
+
+  render() {
+    return new Aside().addClass("sidebar").setAttribute("id", "sidebar").append(
+      new Nav().addClass("sidebar-nav").append(
+        this.item("/app", "library", libraryIcon(), "Library"),
+        this.item("/app/devices", "devices", devicesIcon(), "Devices"),
+        this.item("/app/settings", "settings", settingsIcon(), "Settings"),
+      ),
+    );
+  }
+
+  private item(href: string, section: NavSection, icon: ReturnType<typeof libraryIcon>, label: string) {
+    const isActive = computed(() => this.activeNav() === section);
+    return new Anchor()
+      .setAttribute("href", href)
+      .addClass("sidebar-item")
+      .toggleClass("active", isActive)
+      .append(icon, label);
+  }
+}

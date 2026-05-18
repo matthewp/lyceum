@@ -1,6 +1,6 @@
 /* --- Login page --- */
 
-body.login-page {
+[data-page="login-page"] body {
   min-height: 100vh;
   display: flex;
   align-items: center;

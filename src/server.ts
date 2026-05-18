@@ -20,7 +20,10 @@ import {
 } from "./auth.ts";
 import { renderToString, SafeHTML } from "./html.ts";
 import { bookFilename } from "./book-filename.ts";
-import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage, appLoginPage, appBooksPage, appTagPage, appSeriesPage, appAuthorPage, appSearchPage, appDevicesPage, appDeviceDetailPage, appBookmarkletPage, appSettingsPage } from "./templates.ts";
+import { landingPage, authorizePage, authorizeSuccessPage, addFormatPage, uploadPage, viewBookPage } from "./templates.ts";
+import { matchRoute } from "./routes.ts";
+import { serverPages } from "./server-pages.ts";
+import { renderShell } from "./server-render.ts";
 import { urlToEpub } from "./url-to-epub.ts";
 import {
   verifyOpdsAuth, getOpdsSettings, setOpdsSettings,
@@ -32,10 +35,10 @@ import {
   verifyKosyncAuth, verifyKosyncCredentials, getKosyncSettings, setKosyncSettings,
   getProgress, putProgress,
 } from "./kosync.ts";
-import { listDevices, getDevice, addDevice, verifyDevice, removeDevice, sendToDevice, updateDeviceCredentials } from "./devices/index.ts";
+import { addDevice, verifyDevice, removeDevice, sendToDevice, updateDeviceCredentials } from "./devices/index.ts";
 import { parseMultipart } from "./multipart.ts";
 import type { StorageBackend } from "./storage/index.ts";
-import { getBookProgress, findBookIdForDocument } from "./book-progress.ts";
+import { findBookIdForDocument } from "./book-progress.ts";
 
 export interface ServerConfig {
   port: number;
@@ -643,29 +646,63 @@ export function startServer(config: ServerConfig) {
     return;
   }
 
-  // --- App: Login ---
-  if (path === "/app/login") {
-    if (req.method === "GET") {
-      sendHtml(res, appLoginPage());
-      return;
-    }
-
-    if (req.method === "POST") {
-      const body = new URLSearchParams(await readBody(req));
-      const password = body.get("password") ?? "";
-
-      if (!checkPassword(password)) {
-        sendHtml(res, appLoginPage({ error: "Wrong password." }), 401);
+  // --- App: Zebra-rendered pages (public + session) ---
+  // Sits before the session guard so public routes (e.g. /app/login) work
+  // without auth. The handler enforces auth per-route based on RouteDef.
+  if (req.method === "GET" && path.startsWith("/app")) {
+    const match = matchRoute(url);
+    if (match) {
+      const spec = serverPages[match.route.name];
+      if (spec) {
+        const auth = match.route.auth ?? "session";
+        if (auth === "session" && !verifySessionCookie(req.headers.cookie)) {
+          res.writeHead(302, { Location: "/app/login" });
+          res.end();
+          return;
+        }
+        try {
+          const data = await spec.loader({ url, params: match.params, storage, baseUrl: BASE_URL });
+          if (url.searchParams.get("_data") === "1") {
+            json(res, data);
+            return;
+          }
+          const mod = await spec.importPage();
+          const page = new mod.default(data);
+          const html = renderShell({
+            title: spec.title(data),
+            page,
+            nav: match.route.nav,
+            pageClass: match.route.pageClass,
+            shell: match.route.shell ?? "app",
+            data,
+            pageName: match.route.name,
+          });
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(html);
+        } catch (e: any) {
+          log.error({ err: e, path }, "Zebra page render failed");
+          json(res, { error: e.message }, 500);
+        }
         return;
       }
+    }
+  }
 
-      res.writeHead(302, {
-        Location: "/app",
-        "Set-Cookie": createSessionCookie(),
-      });
+  // --- App: Login POST + logout ---
+  if (path === "/app/login" && req.method === "POST") {
+    const body = new URLSearchParams(await readBody(req));
+    const password = body.get("password") ?? "";
+    if (!checkPassword(password)) {
+      res.writeHead(302, { Location: `/app/login?error=${encodeURIComponent("Wrong password.")}` });
       res.end();
       return;
     }
+    res.writeHead(302, {
+      Location: "/app",
+      "Set-Cookie": createSessionCookie(),
+    });
+    res.end();
+    return;
   }
 
   if (path === "/app/logout" && req.method === "POST") {
@@ -685,68 +722,9 @@ export function startServer(config: ServerConfig) {
       return;
     }
 
-    // Book list
-    if (req.method === "GET" && path === "/app") {
-      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      const perPage = 50;
-      const { books, total } = await storage.listBooks({ limit: perPage, offset: (page - 1) * perPage });
-      sendHtml(res, appBooksPage(books, total, page, perPage, "/app"));
-      return;
-    }
-
-    // Search
-    if (req.method === "GET" && path === "/app/search") {
-      const q = url.searchParams.get("q") ?? "";
-      if (!q) {
-        res.writeHead(302, { Location: "/app" });
-        res.end();
-        return;
-      }
-      const { results, count } = await storage.searchBooks(q, { limit: 100 });
-      sendHtml(res, appSearchPage(q, results, count));
-      return;
-    }
-
-    // Series page
-    const seriesMatch = path.match(/^\/app\/series\/(\d+)$/);
-    if (req.method === "GET" && seriesMatch) {
-      const seriesId = parseInt(seriesMatch[1], 10);
-      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      const perPage = 50;
-      const { books, total, seriesName } = await storage.listBooksBySeries(seriesId, { limit: perPage, offset: (page - 1) * perPage });
-      if (!seriesName) { json(res, { error: "Series not found" }, 404); return; }
-      sendHtml(res, appSeriesPage(seriesName, books, total, page, perPage));
-      return;
-    }
-
-    // Author page
-    const authorMatch = path.match(/^\/app\/author\/(.+)$/);
-    if (req.method === "GET" && authorMatch) {
-      const author = decodeURIComponent(authorMatch[1]);
-      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      const perPage = 50;
-      const { books, total } = await storage.listBooksByAuthor(author, { limit: perPage, offset: (page - 1) * perPage });
-      sendHtml(res, appAuthorPage(author, books, total, page, perPage));
-      return;
-    }
-
-    // Tag page
-    const tagMatch = path.match(/^\/app\/tag\/(.+)$/);
-    if (req.method === "GET" && tagMatch) {
-      const tag = decodeURIComponent(tagMatch[1]);
-      const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
-      const perPage = 50;
-      const { books, total } = await storage.listBooksByTag(tag, { limit: perPage, offset: (page - 1) * perPage });
-      sendHtml(res, appTagPage(tag, books, total, page, perPage));
-      return;
-    }
-
-    // Devices
-    if (req.method === "GET" && path === "/app/devices") {
-      const devices = listDevices();
-      sendHtml(res, appDevicesPage(devices));
-      return;
-    }
+    // Search/series/author/tag/devices/device-detail/bookmarklet GETs all
+    // dispatch through the Zebra page registry above. Only JSON POSTs and
+    // image responses live below.
 
     // Add device (step 1)
     if (req.method === "POST" && path === "/app/devices/add") {
@@ -787,25 +765,6 @@ export function startServer(config: ServerConfig) {
       return;
     }
 
-    // Device detail
-    const deviceDetailMatch = path.match(/^\/app\/devices\/(.+)$/);
-    if (req.method === "GET" && deviceDetailMatch) {
-      const name = decodeURIComponent(deviceDetailMatch[1]);
-      const device = getDevice(name);
-      if (!device) { json(res, { error: "Device not found" }, 404); return; }
-      sendHtml(res, appDeviceDetailPage(device, BASE_URL));
-      return;
-    }
-
-    // Bookmarklet page (GET renders, POST executes)
-    if (req.method === "GET" && path === "/app/bookmarklet") {
-      const deviceName = url.searchParams.get("device") ?? "";
-      const articleUrl = url.searchParams.get("url") ?? "";
-      if (!deviceName || !articleUrl) { json(res, { error: "Missing device or url" }, 400); return; }
-      sendHtml(res, appBookmarkletPage(deviceName, articleUrl));
-      return;
-    }
-
     if (req.method === "POST" && path === "/app/bookmarklet") {
       const body = JSON.parse(await readBody(req));
       const { device: deviceName, url: articleUrl } = body;
@@ -824,43 +783,29 @@ export function startServer(config: ServerConfig) {
       return;
     }
 
-    // Settings
-    if (req.method === "GET" && path === "/app/settings") {
-      const opds = getOpdsSettings();
-      const kosync = getKosyncSettings();
-      sendHtml(res, appSettingsPage({
-        opdsEnabled: opds.enabled, opdsUsername: opds.username, opdsUrl: `${BASE_URL}/opds/`,
-        kosyncEnabled: kosync.enabled, kosyncUsername: kosync.username, kosyncUrl: `${BASE_URL}/kosync`,
-      }));
-      return;
-    }
-
     if (req.method === "POST" && path === "/app/settings/opds") {
       const body = new URLSearchParams(await readBody(req));
       const enabled = body.get("enabled") === "true";
       const username = body.get("username") ?? "";
       const password = body.get("password") ?? "";
-
       const current = getOpdsSettings();
-      const kosync = getKosyncSettings();
       const updates: { enabled?: boolean; username?: string; password?: string } = { enabled };
-      const settingsBase = { kosyncEnabled: kosync.enabled, kosyncUsername: kosync.username, kosyncUrl: `${BASE_URL}/kosync` };
-
       if (username) updates.username = username;
       if (password) updates.password = password;
 
-      if (enabled && !current.hasPassword && !password) {
-        sendHtml(res, appSettingsPage({ opdsEnabled: current.enabled, opdsUsername: current.username, opdsUrl: `${BASE_URL}/opds/`, ...settingsBase, error: "Password is required to enable OPDS." }));
+      const fail = enabled && !current.hasPassword && !password
+        ? "Password is required to enable OPDS."
+        : enabled && !current.username && !username
+          ? "Username is required to enable OPDS."
+          : null;
+      if (fail) {
+        res.writeHead(302, { Location: `/app/settings?error=${encodeURIComponent(fail)}` });
+        res.end();
         return;
       }
-      if (enabled && !current.username && !username) {
-        sendHtml(res, appSettingsPage({ opdsEnabled: current.enabled, opdsUsername: current.username, opdsUrl: `${BASE_URL}/opds/`, ...settingsBase, error: "Username is required to enable OPDS." }));
-        return;
-      }
-
       setOpdsSettings(updates);
-      const updated = getOpdsSettings();
-      sendHtml(res, appSettingsPage({ opdsEnabled: updated.enabled, opdsUsername: updated.username, opdsUrl: `${BASE_URL}/opds/`, ...settingsBase, success: "OPDS settings saved." }));
+      res.writeHead(302, { Location: `/app/settings?success=${encodeURIComponent("OPDS settings saved.")}` });
+      res.end();
       return;
     }
 
@@ -869,42 +814,24 @@ export function startServer(config: ServerConfig) {
       const enabled = body.get("enabled") === "true";
       const username = body.get("username") ?? "";
       const password = body.get("password") ?? "";
-
       const current = getKosyncSettings();
-      const opds = getOpdsSettings();
       const updates: { enabled?: boolean; username?: string; password?: string } = { enabled };
-      const settingsBase = { opdsEnabled: opds.enabled, opdsUsername: opds.username, opdsUrl: `${BASE_URL}/opds/` };
-
       if (username) updates.username = username;
       if (password) updates.password = password;
 
-      if (enabled && !current.hasPassword && !password) {
-        sendHtml(res, appSettingsPage({ kosyncEnabled: current.enabled, kosyncUsername: current.username, kosyncUrl: `${BASE_URL}/kosync`, ...settingsBase, error: "Password is required to enable KOSync." }));
+      const fail = enabled && !current.hasPassword && !password
+        ? "Password is required to enable KOSync."
+        : enabled && !current.username && !username
+          ? "Username is required to enable KOSync."
+          : null;
+      if (fail) {
+        res.writeHead(302, { Location: `/app/settings?error=${encodeURIComponent(fail)}` });
+        res.end();
         return;
       }
-      if (enabled && !current.username && !username) {
-        sendHtml(res, appSettingsPage({ kosyncEnabled: current.enabled, kosyncUsername: current.username, kosyncUrl: `${BASE_URL}/kosync`, ...settingsBase, error: "Username is required to enable KOSync." }));
-        return;
-      }
-
       setKosyncSettings(updates);
-      const updated = getKosyncSettings();
-      sendHtml(res, appSettingsPage({ kosyncEnabled: updated.enabled, kosyncUsername: updated.username, kosyncUrl: `${BASE_URL}/kosync`, ...settingsBase, success: "KOSync settings saved." }));
-      return;
-    }
-
-    // Book detail
-    const bookMatch = path.match(/^\/app\/book\/(\d+)$/);
-    if (req.method === "GET" && bookMatch) {
-      const bookId = parseInt(bookMatch[1], 10);
-      const book = await storage.getBook(bookId);
-      if (!book) {
-        json(res, { error: "Book not found" }, 404);
-        return;
-      }
-      book.reading_progress = await getBookProgress(bookId, storage);
-      const devices = listDevices();
-      sendHtml(res, viewBookPage(book, "app", undefined, !!process.env.CONVERTER_URL, devices.map(d => d.name)));
+      res.writeHead(302, { Location: `/app/settings?success=${encodeURIComponent("KOSync settings saved.")}` });
+      res.end();
       return;
     }
 

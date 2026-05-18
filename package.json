@@ -4,11 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/main.ts",
+    "dev:client": "node scripts/build-client.ts --watch",
+    "build:client": "node scripts/build-client.ts",
     "start": "node src/main.ts",
     "import": "node src/import-main.ts",
     "test": "node --test 'test/**/*.test.ts'"
   },
   "dependencies": {
+    "@matthewp/zebra": "^0.3.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "adm-zip": "^0.5.17",
     "ali-oss": "^6.23.0",
@@ -29,6 +32,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.4.0",
     "@types/xml2js": "^0.4.14",
+    "esbuild": "^0.28.0",
     "typescript": "^5.9.3"
   }
 }
