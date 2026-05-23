@@ -2,7 +2,14 @@ import { extname } from "node:path";
 import type Database from "better-sqlite3";
 import { openDatabase, bookDirPath, bookFilePath, coverFilePath, insertFts, deleteFts, getOrCreateAuthor, getOrCreateTag, getOrCreateSeries } from "./database.ts";
 import type { FileStore } from "./filestore.ts";
-import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult } from "./types.ts";
+import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult, ListOpts, ReadFilter } from "./types.ts";
+
+/** Returns a SQL fragment (prefixed with " AND ..." or "") to filter `b.read_at`. */
+function readFilterSql(filter?: ReadFilter): string {
+  if (filter === "read") return " AND b.read_at IS NOT NULL";
+  if (filter === "unread") return " AND b.read_at IS NULL";
+  return "";
+}
 import { extractMetadata } from "../metadata-extract/index.ts";
 import { injectEpubMetadata } from "../epub-inject.ts";
 import { normalizeToBaselineJpeg } from "../image-normalize.ts";
@@ -51,16 +58,20 @@ export class LocalBackend implements StorageBackend {
 
   // --- Read operations ---
 
-  async listBooks(opts: { limit?: number; offset?: number } = {}) {
+  async listBooks(opts: ListOpts = {}) {
     const limit = opts.limit ?? 50;
     const offset = opts.offset ?? 0;
+    const filterSql = readFilterSql(opts.readFilter);
 
-    const total = (this.db.prepare("SELECT COUNT(*) as count FROM books").get() as { count: number }).count;
+    const total = (this.db.prepare(
+      `SELECT COUNT(*) as count FROM books b WHERE 1=1${filterSql}`
+    ).get() as { count: number }).count;
 
     const rows = this.db.prepare(`
       SELECT b.*, s.name as series_name
       FROM books b
       LEFT JOIN series s ON b.series_id = s.id
+      WHERE 1=1${filterSql}
       ORDER BY NULLIF(b.created_at, 'None') DESC NULLS LAST
       LIMIT ? OFFSET ?
     `).all(limit, offset) as BookRow[];
@@ -124,13 +135,16 @@ export class LocalBackend implements StorageBackend {
     `).all() as CategoryItem[];
   }
 
-  async listBooksByTag(tag: string, opts: { limit?: number; offset?: number } = {}) {
+  async listBooksByTag(tag: string, opts: ListOpts = {}) {
     const limit = opts.limit ?? 100;
     const offset = opts.offset ?? 0;
+    const filterSql = readFilterSql(opts.readFilter);
 
     const total = (this.db.prepare(`
       SELECT COUNT(*) as count FROM book_tags bt
-      JOIN tags t ON t.id = bt.tag_id WHERE t.name = ?
+      JOIN tags t ON t.id = bt.tag_id
+      JOIN books b ON b.id = bt.book_id
+      WHERE t.name = ?${filterSql}
     `).get(tag) as { count: number }).count;
 
     const rows = this.db.prepare(`
@@ -138,20 +152,23 @@ export class LocalBackend implements StorageBackend {
       LEFT JOIN series s ON b.series_id = s.id
       JOIN book_tags bt ON bt.book_id = b.id
       JOIN tags t ON t.id = bt.tag_id
-      WHERE t.name = ?
+      WHERE t.name = ?${filterSql}
       ORDER BY NULLIF(b.created_at, 'None') DESC NULLS LAST LIMIT ? OFFSET ?
     `).all(tag, limit, offset) as BookRow[];
 
     return { books: rows.map(row => this.rowToSummary(row)), total };
   }
 
-  async listBooksByAuthor(author: string, opts: { limit?: number; offset?: number } = {}) {
+  async listBooksByAuthor(author: string, opts: ListOpts = {}) {
     const limit = opts.limit ?? 100;
     const offset = opts.offset ?? 0;
+    const filterSql = readFilterSql(opts.readFilter);
 
     const total = (this.db.prepare(`
       SELECT COUNT(*) as count FROM book_authors ba
-      JOIN authors a ON a.id = ba.author_id WHERE a.name = ?
+      JOIN authors a ON a.id = ba.author_id
+      JOIN books b ON b.id = ba.book_id
+      WHERE a.name = ?${filterSql}
     `).get(author) as { count: number }).count;
 
     const rows = this.db.prepare(`
@@ -159,7 +176,7 @@ export class LocalBackend implements StorageBackend {
       LEFT JOIN series s ON b.series_id = s.id
       JOIN book_authors ba ON ba.book_id = b.id
       JOIN authors a ON a.id = ba.author_id
-      WHERE a.name = ?
+      WHERE a.name = ?${filterSql}
       ORDER BY NULLIF(b.created_at, 'None') DESC NULLS LAST LIMIT ? OFFSET ?
     `).all(author, limit, offset) as BookRow[];
 
@@ -176,20 +193,23 @@ export class LocalBackend implements StorageBackend {
     `).all() as CategoryItem[];
   }
 
-  async listBooksBySeries(seriesId: number, opts: { limit?: number; offset?: number } = {}) {
+  async listBooksBySeries(seriesId: number, opts: ListOpts = {}) {
     const limit = opts.limit ?? 100;
     const offset = opts.offset ?? 0;
+    const filterSql = readFilterSql(opts.readFilter);
 
     const seriesRow = this.db.prepare("SELECT name FROM series WHERE id = ?").get(seriesId) as { name: string } | undefined;
     const seriesName = seriesRow?.name ?? null;
 
-    const total = (this.db.prepare("SELECT COUNT(*) as count FROM books WHERE series_id = ?").get(seriesId) as { count: number }).count;
+    const total = (this.db.prepare(
+      `SELECT COUNT(*) as count FROM books b WHERE b.series_id = ?${filterSql}`
+    ).get(seriesId) as { count: number }).count;
 
     const rows = this.db.prepare(`
       SELECT b.*, s.name as series_name
       FROM books b
       LEFT JOIN series s ON b.series_id = s.id
-      WHERE b.series_id = ?
+      WHERE b.series_id = ?${filterSql}
       ORDER BY b.series_index ASC, b.title ASC
       LIMIT ? OFFSET ?
     `).all(seriesId, limit, offset) as BookRow[];
@@ -629,6 +649,7 @@ export class LocalBackend implements StorageBackend {
       series_id: row.series_id ?? null,
       series_index: row.series_index,
       has_cover: row.has_cover === 1,
+      read_at: row.read_at,
     };
   }
 

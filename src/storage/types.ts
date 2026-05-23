@@ -10,6 +10,7 @@ export interface BookSummary {
   series_id: number | null;
   series_index: number | null;
   has_cover: boolean;
+  read_at: string | null;
 }
 
 export interface BookDetail {
@@ -49,17 +50,27 @@ export interface AddBookResult {
   authors: string[];
 }
 
+/** Filter by read state. "all" (or undefined) = no filtering. */
+export type ReadFilter = "all" | "read" | "unread";
+
+export interface ListOpts {
+  limit?: number;
+  offset?: number;
+  /** Filter by read state. Defaults to "all". */
+  readFilter?: ReadFilter;
+}
+
 export interface StorageBackend {
   // Read
-  listBooks(opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number }>;
+  listBooks(opts?: ListOpts): Promise<{ books: BookSummary[]; total: number }>;
   getBook(id: number): Promise<BookDetail | null>;
   searchBooks(query: string, opts?: { limit?: number; offset?: number }): Promise<{ results: BookSummary[]; count: number }>;
   listAuthors(): Promise<CategoryItem[]>;
   listTags(): Promise<CategoryItem[]>;
   listSeries(): Promise<CategoryItem[]>;
-  listBooksByTag(tag: string, opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number }>;
-  listBooksBySeries(seriesId: number, opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number; seriesName: string | null }>;
-  listBooksByAuthor(author: string, opts?: { limit?: number; offset?: number }): Promise<{ books: BookSummary[]; total: number }>;
+  listBooksByTag(tag: string, opts?: ListOpts): Promise<{ books: BookSummary[]; total: number }>;
+  listBooksBySeries(seriesId: number, opts?: ListOpts): Promise<{ books: BookSummary[]; total: number; seriesName: string | null }>;
+  listBooksByAuthor(author: string, opts?: ListOpts): Promise<{ books: BookSummary[]; total: number }>;
 
   // Write
   addBook(filename: string, data: Buffer): Promise<AddBookResult>;

@@ -11,5 +11,6 @@ export const loadSearch: Loader<BooksData> = async ({ url, storage }) => {
     perPage: count,
     basePath: `/app/search?q=${encodeURIComponent(q)}`,
     pageTitle: `Results for “${q}”`,
+    readFilter: "all",
   };
 };

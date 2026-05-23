@@ -1,6 +1,20 @@
 import { randomUUID, createHash, randomBytes } from "node:crypto";
 import { logger as root } from "../logger.ts";
-import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult } from "./types.ts";
+import type { StorageBackend, BookSummary, BookDetail, CategoryItem, AddBookResult, ListOpts, ReadFilter } from "./types.ts";
+
+/** Returns a Calibre search expression for the read filter, or "" for "all". */
+function readFilterQuery(filter?: ReadFilter): string {
+  if (filter === "read") return "#read:true";
+  if (filter === "unread") return "#read:false";
+  return "";
+}
+
+/** Joins two Calibre search expressions with AND. Either may be empty. */
+function joinQuery(a: string, b: string): string {
+  if (!a) return b;
+  if (!b) return a;
+  return `${a} and ${b}`;
+}
 
 const log = root.child({ module: "calibre" });
 
@@ -86,6 +100,7 @@ function formatBook(raw: any): BookSummary {
     series_id: null, // Calibre backend does not expose series IDs
     series_index: raw.series_index ?? null,
     has_cover: raw.has_cover ?? false,
+    read_at: raw.user_metadata?.["#read"]?.["#value#"] ?? null,
   };
 }
 
@@ -212,11 +227,13 @@ export class CalibreBackend implements StorageBackend {
 
   // --- Read operations ---
 
-  async listBooks(opts: { limit?: number; offset?: number } = {}) {
+  async listBooks(opts: ListOpts = {}) {
     const num = opts.limit ?? 50;
     const offset = opts.offset ?? 0;
     const path = this.libraryPath(`/ajax/search`);
-    const result = await this.get(`${path}?num=${num}&offset=${offset}&sort=timestamp&sort_order=desc`);
+    const filterQ = readFilterQuery(opts.readFilter);
+    const queryParam = filterQ ? `&query=${encodeURIComponent(filterQ)}` : "";
+    const result = await this.get(`${path}?num=${num}&offset=${offset}&sort=timestamp&sort_order=desc${queryParam}`);
 
     const bookIds: number[] = result.book_ids;
     const total: number = result.total_num;
@@ -283,17 +300,19 @@ export class CalibreBackend implements StorageBackend {
     }));
   }
 
-  async listBooksByAuthor(author: string, opts: { limit?: number; offset?: number } = {}) {
-    const result = await this.searchBooks(`authors:"=${author}"`, opts);
+  async listBooksByAuthor(author: string, opts: ListOpts = {}) {
+    const q = joinQuery(`authors:"=${author}"`, readFilterQuery(opts.readFilter));
+    const result = await this.searchBooks(q, opts);
     return { books: result.results, total: result.count };
   }
 
-  async listBooksByTag(tag: string, opts: { limit?: number; offset?: number } = {}) {
-    const result = await this.searchBooks(`tags:"=${tag}"`, opts);
+  async listBooksByTag(tag: string, opts: ListOpts = {}) {
+    const q = joinQuery(`tags:"=${tag}"`, readFilterQuery(opts.readFilter));
+    const result = await this.searchBooks(q, opts);
     return { books: result.results, total: result.count };
   }
 
-  async listBooksBySeries(_seriesId: number, _opts: { limit?: number; offset?: number } = {}) {
+  async listBooksBySeries(_seriesId: number, _opts: ListOpts = {}) {
     // Calibre backend does not expose series IDs; unsupported
     return { books: [], total: 0, seriesName: null };
   }

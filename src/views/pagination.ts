@@ -1,10 +1,24 @@
 import { View, Div, Anchor, Span } from "@matthewp/zebra";
+import type { ReadFilter } from "../storage/types.ts";
 
 export interface PaginationProps {
   page: number;
   perPage: number;
   total: number;
   basePath: string;
+  readFilter?: ReadFilter;
+}
+
+/**
+ * Build a page URL preserving any pre-existing query string on `basePath`
+ * (e.g. /app/search?q=foo) and the read filter.
+ */
+function buildPageUrl(basePath: string, page: number, readFilter?: ReadFilter): string {
+  const [path, existing] = basePath.split("?", 2);
+  const params = new URLSearchParams(existing ?? "");
+  params.set("page", String(page));
+  if (readFilter && readFilter !== "all") params.set("filter", readFilter);
+  return `${path}?${params.toString()}`;
 }
 
 export class Pagination extends View {
@@ -16,7 +30,7 @@ export class Pagination extends View {
   }
 
   render() {
-    const { page, perPage, total, basePath } = this.props;
+    const { page, perPage, total, basePath, readFilter } = this.props;
     const totalPages = Math.ceil(total / perPage);
     if (totalPages <= 1) return new Div();
 
@@ -24,7 +38,9 @@ export class Pagination extends View {
 
     if (page > 1) {
       root.append(
-        new Anchor().addClass("page-link").setAttribute("href", `${basePath}?page=${page - 1}`).setText("← Previous"),
+        new Anchor().addClass("page-link")
+          .setAttribute("href", buildPageUrl(basePath, page - 1, readFilter))
+          .setText("← Previous"),
       );
     } else {
       root.append(new Span().addClass("page-link").addClass("disabled").setText("← Previous"));
@@ -34,7 +50,9 @@ export class Pagination extends View {
 
     if (page < totalPages) {
       root.append(
-        new Anchor().addClass("page-link").setAttribute("href", `${basePath}?page=${page + 1}`).setText("Next →"),
+        new Anchor().addClass("page-link")
+          .setAttribute("href", buildPageUrl(basePath, page + 1, readFilter))
+          .setText("Next →"),
       );
     } else {
       root.append(new Span().addClass("page-link").addClass("disabled").setText("Next →"));

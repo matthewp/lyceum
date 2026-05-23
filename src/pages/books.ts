@@ -1,8 +1,9 @@
 import { View, Div, H1, Span, Table, Thead, Tr, Th, List } from "@matthewp/zebra";
-import type { BookSummary } from "../storage/types.ts";
+import type { BookSummary, ReadFilter } from "../storage/types.ts";
 import { BookCard } from "../views/book-card.ts";
 import { BookRow } from "../views/book-row.ts";
 import { ViewToggle } from "../views/view-toggle.ts";
+import { FilterDropdown } from "../views/filter-dropdown.ts";
 import { Pagination } from "../views/pagination.ts";
 
 export interface BooksData {
@@ -12,6 +13,7 @@ export interface BooksData {
   perPage: number;
   basePath: string;
   pageTitle: string;
+  readFilter: ReadFilter;
 }
 
 export default class BooksPage extends View {
@@ -23,7 +25,7 @@ export default class BooksPage extends View {
   }
 
   render() {
-    const { books, total, page, perPage, basePath, pageTitle } = this.data;
+    const { books, total, page, perPage, basePath, pageTitle, readFilter } = this.data;
 
     return new Div().addClass("container").append(
       new Div().addClass("page-header").append(
@@ -31,13 +33,16 @@ export default class BooksPage extends View {
           pageTitle + " ",
           new Span().addClass("page-count").setText(`${total} books`),
         ),
-        new ViewToggle(),
+        new Div().addClass("page-header-controls").append(
+          new FilterDropdown({ readFilter, basePath }),
+          new ViewToggle(),
+        ),
       ),
       new Div().setAttribute("id", "books-container").append(
         this.coverWall(books),
         this.bookList(books),
       ),
-      new Pagination({ page, perPage, total, basePath }),
+      new Pagination({ page, perPage, total, basePath, readFilter }),
     );
   }
 
