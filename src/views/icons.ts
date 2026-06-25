@@ -38,6 +38,26 @@ export const settingsIcon = (): Svg =>
     new Path().setAttribute("d", "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"),
   );
 
+export const sunIcon = (): Svg =>
+  svg(
+    18,
+    new Circle().setAttribute("cx", "12").setAttribute("cy", "12").setAttribute("r", "5"),
+    new Line().setAttribute("x1", "12").setAttribute("y1", "1").setAttribute("x2", "12").setAttribute("y2", "3"),
+    new Line().setAttribute("x1", "12").setAttribute("y1", "21").setAttribute("x2", "12").setAttribute("y2", "23"),
+    new Line().setAttribute("x1", "4.22").setAttribute("y1", "4.22").setAttribute("x2", "5.64").setAttribute("y2", "5.64"),
+    new Line().setAttribute("x1", "18.36").setAttribute("y1", "18.36").setAttribute("x2", "19.78").setAttribute("y2", "19.78"),
+    new Line().setAttribute("x1", "1").setAttribute("y1", "12").setAttribute("x2", "3").setAttribute("y2", "12"),
+    new Line().setAttribute("x1", "21").setAttribute("y1", "12").setAttribute("x2", "23").setAttribute("y2", "12"),
+    new Line().setAttribute("x1", "4.22").setAttribute("y1", "19.78").setAttribute("x2", "5.64").setAttribute("y2", "18.36"),
+    new Line().setAttribute("x1", "18.36").setAttribute("y1", "5.64").setAttribute("x2", "19.78").setAttribute("y2", "4.22"),
+  ).addClass("theme-icon theme-icon-sun");
+
+export const moonIcon = (): Svg =>
+  svg(
+    18,
+    new Path().setAttribute("d", "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"),
+  ).addClass("theme-icon theme-icon-moon");
+
 export const searchIcon = (): Svg =>
   svg(
     14,

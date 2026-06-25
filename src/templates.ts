@@ -261,7 +261,7 @@ export function addFormatPage(bookTitle: string, opts?: { success?: string; erro
   </div>
   <div class="upload-container">
     <h1 class="upload-heading">Add Format</h1>
-    <p class="upload-sub">Adding a new format to <strong style="color:#f0e8dc;">${bookTitle}</strong></p>
+    <p class="upload-sub">Adding a new format to <strong style="color:var(--text-strong);">${bookTitle}</strong></p>
     <form method="POST" enctype="multipart/form-data" class="upload-form">
       <label class="file-label">
         <input type="file" name="book" accept=".epub,.pdf,.mobi,.azw3,.cbz,.cbr,.txt,.rtf,.docx" required>

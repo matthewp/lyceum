@@ -1,7 +1,7 @@
 .device-list {
   width: 100%;
   border-collapse: collapse;
-  border: 2px solid rgba(240,232,220,0.15);
+  border: 2px solid rgba(var(--fg-rgb),0.15);
   border-radius: 8px;
   overflow: hidden;
   font-size: 1.12em;
@@ -13,11 +13,11 @@
   font-size: 0.72em;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(240,232,220,0.4);
+  color: rgba(var(--fg-rgb),0.4);
   font-weight: 700;
-  background: rgba(240,232,220,0.05);
-  border-bottom: 2px solid rgba(240,232,220,0.15);
-  border-right: 1px solid rgba(240,232,220,0.08);
+  background: rgba(var(--fg-rgb),0.05);
+  border-bottom: 2px solid rgba(var(--fg-rgb),0.15);
+  border-right: 1px solid rgba(var(--fg-rgb),0.08);
   white-space: nowrap;
 }
 .device-list .list-header th:last-child { border-right: none; }
@@ -25,8 +25,8 @@
 .device-row td {
   padding: 14px 16px;
   vertical-align: middle;
-  border-bottom: 1px solid rgba(240,232,220,0.08);
-  border-right: 1px solid rgba(240,232,220,0.06);
+  border-bottom: 1px solid rgba(var(--fg-rgb),0.08);
+  border-right: 1px solid rgba(var(--fg-rgb),0.06);
 }
 .device-row td:last-child { border-right: none; }
 .device-row:last-child td { border-bottom: none; }
@@ -34,18 +34,18 @@
 .device-row {
   transition: background 150ms;
 }
-.device-row:hover { background: rgba(236,72,153,0.06); }
+.device-row:hover { background: rgba(var(--c-pink-rgb),0.06); }
 
 .col-device-name {
   font-family: var(--font-serif);
   font-size: 1.05em;
   font-weight: 700;
-  color: rgba(240,232,220,0.9);
+  color: rgba(var(--fg-rgb),0.9);
 }
-.device-row:hover .col-device-name { color: #ec4899; }
+.device-row:hover .col-device-name { color: var(--c-pink); }
 
 .col-device-type {
-  color: #06b6d4;
+  color: var(--c-cyan);
   font-size: 0.82em;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -60,7 +60,7 @@
 .btn-remove-device {
   background: none;
   border: none;
-  color: rgba(240,232,220,0.15);
+  color: rgba(var(--fg-rgb),0.15);
   font-size: 1.3em;
   cursor: pointer;
   padding: 2px 8px;
@@ -69,24 +69,24 @@
   line-height: 1;
 }
 .btn-remove-device:hover {
-  color: #ef4444;
-  background: rgba(239,68,68,0.08);
+  color: var(--c-danger);
+  background: rgba(var(--c-danger-rgb),0.08);
 }
 
 .devices-empty {
-  color: rgba(240,232,220,0.4);
+  color: rgba(var(--fg-rgb),0.4);
   font-size: 1.1em;
   padding: 40px 0;
 }
 
 .add-message {
-  color: #06b6d4;
+  color: var(--c-cyan);
   margin-bottom: 16px;
   line-height: 1.5;
 }
 
 .modal-error {
-  color: #ef4444;
+  color: var(--c-danger);
   font-size: 0.9em;
   margin-top: 12px;
 }
@@ -96,18 +96,18 @@
   color: inherit;
   text-decoration: none;
 }
-.device-row:hover .device-name-link { color: #ec4899; }
+.device-row:hover .device-name-link { color: var(--c-pink); }
 
 /* Device detail page */
 .back-link {
   display: inline-block;
-  color: rgba(240,232,220,0.45);
+  color: rgba(var(--fg-rgb),0.45);
   text-decoration: none;
   font-size: 0.85em;
   margin-bottom: 6px;
   transition: color 150ms;
 }
-.back-link:hover { color: rgba(240,232,220,0.8); }
+.back-link:hover { color: rgba(var(--fg-rgb),0.8); }
 
 .page-header-left {
   display: flex;
@@ -121,9 +121,9 @@
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #06b6d4;
-  background: rgba(6,182,212,0.1);
-  border: 1px solid rgba(6,182,212,0.25);
+  color: var(--c-cyan);
+  background: rgba(var(--c-cyan-rgb),0.1);
+  border: 1px solid rgba(var(--c-cyan-rgb),0.25);
   border-radius: 4px;
   padding: 3px 8px;
   vertical-align: middle;
@@ -141,12 +141,12 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(240,232,220,0.45);
+  color: rgba(var(--fg-rgb),0.45);
   margin-bottom: 10px;
 }
 
 .section-desc {
-  color: rgba(240,232,220,0.6);
+  color: rgba(var(--fg-rgb),0.6);
   font-size: 0.95em;
   line-height: 1.6;
   margin-bottom: 20px;
@@ -162,10 +162,10 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: rgba(236,72,153,0.08);
-  border: 2px dashed rgba(236,72,153,0.45);
+  background: rgba(var(--c-pink-rgb),0.08);
+  border: 2px dashed rgba(var(--c-pink-rgb),0.45);
   border-radius: 8px;
-  color: #ec4899;
+  color: var(--c-pink);
   font-weight: 600;
   font-size: 0.95em;
   text-decoration: none;
@@ -174,14 +174,14 @@
   user-select: none;
 }
 .bookmarklet-link:hover {
-  background: rgba(236,72,153,0.14);
-  border-color: rgba(236,72,153,0.7);
+  background: rgba(var(--c-pink-rgb),0.14);
+  border-color: rgba(var(--c-pink-rgb),0.7);
 }
 .bookmarklet-link:active { cursor: grabbing; }
 
 .bookmarklet-hint {
   font-size: 0.78em;
-  color: rgba(240,232,220,0.35);
+  color: rgba(var(--fg-rgb),0.35);
 }
 
 /* Bookmarklet landing page */
@@ -195,8 +195,8 @@
 .bml-card {
   text-align: center;
   padding: 48px 40px;
-  background: rgba(240,232,220,0.03);
-  border: 1px solid rgba(240,232,220,0.1);
+  background: rgba(var(--fg-rgb),0.03);
+  border: 1px solid rgba(var(--fg-rgb),0.1);
   border-radius: 12px;
   max-width: 480px;
   width: 100%;
@@ -205,8 +205,8 @@
 .bml-spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid rgba(240,232,220,0.1);
-  border-top-color: #ec4899;
+  border: 3px solid rgba(var(--fg-rgb),0.1);
+  border-top-color: var(--c-pink);
   border-radius: 50%;
   animation: bml-spin 0.8s linear infinite;
   margin: 0 auto 24px;
@@ -218,13 +218,13 @@
   margin-bottom: 12px;
   line-height: 1.5;
 }
-.bml-pending { color: rgba(240,232,220,0.6); }
-.bml-success { color: rgba(240,232,220,0.9); }
-.bml-error   { color: #ef4444; }
+.bml-pending { color: rgba(var(--fg-rgb),0.6); }
+.bml-success { color: rgba(var(--fg-rgb),0.9); }
+.bml-error   { color: var(--c-danger); }
 
 .bml-countdown {
   font-size: 0.82em;
-  color: rgba(240,232,220,0.35);
+  color: rgba(var(--fg-rgb),0.35);
   margin-bottom: 20px;
 }
 
@@ -246,13 +246,13 @@
 
 .bml-rediscover-hint {
   font-size: 0.78em;
-  color: rgba(240,232,220,0.35);
+  color: rgba(var(--fg-rgb),0.35);
   margin-top: -4px;
   margin-bottom: 0;
 }
 
 .device-ip {
-  color: rgba(240,232,220,0.4);
+  color: rgba(var(--fg-rgb),0.4);
   font-size: 0.82em;
   margin-top: 4px;
   margin-bottom: 24px;
@@ -260,8 +260,8 @@
 
 .device-ip-addr {
   font-family: var(--font-mono);
-  color: rgba(240,232,220,0.6);
-  background: rgba(240,232,220,0.06);
+  color: rgba(var(--fg-rgb),0.6);
+  background: rgba(var(--fg-rgb),0.06);
   padding: 1px 6px;
   border-radius: 4px;
   margin-left: 4px;

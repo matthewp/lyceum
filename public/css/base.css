@@ -24,6 +24,29 @@
   --shadow-cover: rgba(44,24,16,0.25);
   --hero-bg: #170e08;
   --hero-accent: #f59e0b;
+
+  /* Component palette (consumed by layout/book-table/forms/devices/etc).
+     :root holds the LIGHT values; [data-theme="dark"] overrides below.
+     --fg-rgb is a raw "r,g,b" triplet so component CSS can build
+     rgba(var(--fg-rgb), <alpha>) for text/borders/tints at any opacity. */
+  --fg-rgb: 44, 24, 16;
+  --bg-deep: #fdf8f0;
+  --bg-panel: #f5ece0;
+  --bg-panel-hover: #ede0ce;
+  --c-amber: #b45309;
+  --c-amber-rgb: 180, 83, 9;
+  --c-amber-fg: #fff;
+  --c-amber-fg-rgb: 255, 255, 255;
+  --c-cyan: #0e7490;
+  --c-cyan-rgb: 14, 116, 144;
+  --c-pink: #be185d;
+  --c-pink-rgb: 190, 24, 93;
+  --on-color: #fff;
+  --c-danger: #dc2626;
+  --c-danger-rgb: 220, 38, 38;
+  --c-danger-soft: #dc2626;
+  --c-success: #16a34a;
+
   --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
   --font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Mono", monospace;
@@ -52,6 +75,26 @@
   --shadow-cover: rgba(0,0,0,0.6);
   --hero-bg: #170e08;
   --hero-accent: #f59e0b;
+
+  /* Component palette — dark values (match the colors components used to
+     hardcode, so dark mode looks identical to before the refactor). */
+  --fg-rgb: 240, 232, 220;
+  --bg-deep: #0a0908;
+  --bg-panel: #1a1814;
+  --bg-panel-hover: #251e18;
+  --c-amber: #fbbf24;
+  --c-amber-rgb: 251, 191, 36;
+  --c-amber-fg: #0a0908;
+  --c-amber-fg-rgb: 10, 9, 8;
+  --c-cyan: #06b6d4;
+  --c-cyan-rgb: 6, 182, 212;
+  --c-pink: #ec4899;
+  --c-pink-rgb: 236, 72, 153;
+  --on-color: #fff;
+  --c-danger: #ef4444;
+  --c-danger-rgb: 239, 68, 68;
+  --c-danger-soft: #f87171;
+  --c-success: #22c55e;
 }
 
 body {

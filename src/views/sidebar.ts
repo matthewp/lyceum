@@ -1,9 +1,11 @@
 import { View, Aside, Nav, Anchor, computed } from "@matthewp/zebra";
 import { libraryIcon, devicesIcon, settingsIcon } from "./icons.ts";
+import { ThemeToggle } from "./theme-toggle.ts";
 import type { NavSection } from "../routes.ts";
 
 export class Sidebar extends View {
   private activeNav: () => NavSection;
+  private themeToggle = new ThemeToggle();
 
   constructor(activeNav: () => NavSection) {
     super();
@@ -16,6 +18,7 @@ export class Sidebar extends View {
         this.item("/app", "library", libraryIcon(), "Library"),
         this.item("/app/devices", "devices", devicesIcon(), "Devices"),
         this.item("/app/settings", "settings", settingsIcon(), "Settings"),
+        this.themeToggle,
       ),
     );
   }

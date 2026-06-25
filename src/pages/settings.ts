@@ -13,7 +13,7 @@ export default class SettingsPage extends View {
     const main = new Element("main").addClass("main-content").setStyle("padding", "32px");
     main.append(
       new H1().setStyle("font-family", "var(--font-serif)").setStyle("font-size", "2.2em")
-        .setStyle("font-weight", "800").setStyle("color", "#f0e8dc").setStyle("margin-bottom", "32px")
+        .setStyle("font-weight", "800").setStyle("color", "var(--text-strong)").setStyle("margin-bottom", "32px")
         .setText("Settings"),
       ...this.flash(),
       this.opdsSection(),

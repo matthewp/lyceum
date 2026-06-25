@@ -8,7 +8,7 @@ const GOOGLE_FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"
 // from localStorage BEFORE first paint so CSS that targets them doesn't FOUC.
 // Also set data-page from the SSR-known route so first-paint CSS resolves.
 const bootScript = (pageClass: string) =>
-  `(function(){var d=document.documentElement;d.dataset.theme="dark";d.dataset.page=${JSON.stringify(pageClass)};try{d.dataset.view=localStorage.getItem("view")||"grid";d.dataset.sidebar=localStorage.getItem("sidebar")||"closed";}catch(e){d.dataset.view="grid";d.dataset.sidebar="closed";}})();`;
+  `(function(){var d=document.documentElement;d.dataset.page=${JSON.stringify(pageClass)};try{d.dataset.theme=localStorage.getItem("theme")||"dark";d.dataset.view=localStorage.getItem("view")||"grid";d.dataset.sidebar=localStorage.getItem("sidebar")||"closed";}catch(e){d.dataset.theme="dark";d.dataset.view="grid";d.dataset.sidebar="closed";}})();`;
 
 const APP_STYLESHEETS = [
   "/public/css/base.css",
