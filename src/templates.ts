@@ -82,7 +82,6 @@ function header(_activePage?: string): SafeHTML {
 
 const APP_MODULE = `
 addEventListener("load",()=>quicklink.listen());
-if("serviceWorker"in navigator)navigator.serviceWorker.register("/public/sw.js",{scope:"/"});
 document.addEventListener("keydown",function(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();document.querySelector(".search-box")?.focus();}});
 (function(){
   var btn=document.getElementById("user-btn"),drop=document.getElementById("user-dropdown");

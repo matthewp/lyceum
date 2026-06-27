@@ -545,10 +545,15 @@ export function startServer(config: ServerConfig) {
       try {
         const coverBuf = await storage.getBookCover(bookId);
         if (!coverBuf) { res.writeHead(404); res.end(); return; }
+        const etag = `"${createHash("md5").update(coverBuf).digest("hex")}"`;
+        if (req.headers["if-none-match"] === etag) {
+          res.writeHead(304); res.end(); return;
+        }
         res.writeHead(200, {
           "Content-Type": "image/jpeg",
           "Content-Length": String(coverBuf.byteLength),
-          "Cache-Control": "public, max-age=86400",
+          "Cache-Control": "no-cache",
+          "ETag": etag,
         });
         res.end(coverBuf);
       } catch (err) {
@@ -981,10 +986,17 @@ export function startServer(config: ServerConfig) {
         res.end();
         return;
       }
+      const etag = `"${createHash("md5").update(coverBuf).digest("hex")}"`;
+      if (req.headers["if-none-match"] === etag) {
+        res.writeHead(304);
+        res.end();
+        return;
+      }
       res.writeHead(200, {
         "Content-Type": "image/jpeg",
         "Content-Length": String(coverBuf.byteLength),
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": "no-cache",
+        "ETag": etag,
       });
       res.end(coverBuf);
       return;
