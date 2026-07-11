@@ -56,7 +56,7 @@ export class Modal extends View {
       .addClass("modal-backdrop")
       .setAttribute("id", id)
       .toggleAttribute("hidden", () => !open())
-      .toggleClass("open", this.openClass)
+      .toggleClass("modal-backdrop--open", this.openClass)
       .on("click", (e) => {
         // Close only when the click target is the backdrop itself
         // (not a descendant) — i.e. the user clicked outside the modal box.
@@ -68,16 +68,16 @@ export class Modal extends View {
     if (title !== undefined) {
       modal.setAttribute("aria-labelledby", `${id}-title`);
       modal.append(
-        new Div().addClass("modal-header").append(
-          new H2().addClass("modal-title").setAttribute("id", `${id}-title`).setText(title),
-          new Button().addClass("modal-close").setAttribute("aria-label", "Close")
+        new Div().addClass("modal__header").append(
+          new H2().addClass("modal__title").setAttribute("id", `${id}-title`).setText(title),
+          new Button().addClass("modal__close").setAttribute("aria-label", "Close")
             .on("click", () => open(false))
             .append("×"),
         ),
       );
     }
-    modal.append(new Div().addClass("modal-body").append(body));
-    if (footer) modal.append(new Div().addClass("modal-footer").append(footer));
+    modal.append(new Div().addClass("modal__body").append(body));
+    if (footer) modal.append(new Div().addClass("modal__footer").append(footer));
 
     return backdrop.append(modal);
   }

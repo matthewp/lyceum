@@ -11,6 +11,7 @@ const bootScript = (pageClass: string) =>
   `(function(){var d=document.documentElement;d.dataset.page=${JSON.stringify(pageClass)};try{d.dataset.theme=localStorage.getItem("theme")||"dark";d.dataset.view=localStorage.getItem("view")||"grid";d.dataset.sidebar=localStorage.getItem("sidebar")||"closed";}catch(e){d.dataset.theme="dark";d.dataset.view="grid";d.dataset.sidebar="closed";}})();`;
 
 const APP_STYLESHEETS = [
+  "/public/css/tokens.css",
   "/public/css/base.css",
   "/public/css/layout.css",
   "/public/css/modal.css",

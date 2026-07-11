@@ -41,17 +41,17 @@ export default class BookmarkletPage extends View {
     const card = new Div().addClass("bml-card");
 
     card.append(
-      new Div().addClass("bml-spinner").toggleAttribute("hidden", computed(() => this.status().kind !== "pending")),
-      new P().addClass("bml-status")
-        .toggleClass("bml-pending", computed(() => this.status().kind === "pending"))
-        .toggleClass("bml-success", computed(() => this.status().kind === "success"))
-        .toggleClass("bml-error", computed(() => this.status().kind === "error" || this.status().kind === "rediscover"))
+      new Div().addClass("bml-card__spinner").toggleAttribute("hidden", computed(() => this.status().kind !== "pending")),
+      new P().addClass("bml-card__status")
+        .toggleClass("bml-card__status--pending", computed(() => this.status().kind === "pending"))
+        .toggleClass("bml-card__status--success", computed(() => this.status().kind === "success"))
+        .toggleClass("bml-card__status--error", computed(() => this.status().kind === "error" || this.status().kind === "rediscover"))
         .setText(computed(() => this.status().message)),
       this.deviceListView(),
-      new P().addClass("bml-countdown")
+      new P().addClass("bml-card__countdown")
         .toggleAttribute("hidden", computed(() => this.countdown() === null))
         .setText(computed(() => this.countdown() === null ? "" : `Redirecting in ${this.countdown()}s…`)),
-      new Button().addClass("btn").addClass("btn-ghost").addClass("bml-back")
+      new Button().addClass("btn").addClass("btn--ghost").addClass("bml-card__back")
         .toggleAttribute("hidden", computed(() => this.status().kind === "pending"))
         .on("click", () => {
           if (this.timer) clearInterval(this.timer);
@@ -71,9 +71,9 @@ export default class BookmarkletPage extends View {
       if (s.kind !== "rediscover") return;
       for (const d of s.devices) {
         wrap.append(
-          new Button().addClass("device-pick-btn").setText(`${d.ip}:${d.port}`)
+          new Button().addClass("device-select-list__btn").setText(`${d.ip}:${d.port}`)
             .on("click", () => this.pickDevice(d)),
-          new P().addClass("bml-rediscover-hint").setText("Tap to confirm and resend"),
+          new P().addClass("bml-card__rediscover-hint").setText("Tap to confirm and resend"),
         );
       }
     });

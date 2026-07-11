@@ -40,7 +40,7 @@ export default class DevicesPage extends View {
 
     const table = new Table().setAttribute("id", "device-table").addClass("device-list").append(
       new Thead().append(
-        new Tr().addClass("list-header").append(
+        new Tr().addClass("device-list__header").append(
           new Th().setText("Name"),
           new Th().setText("Type"),
           new Th(),
@@ -58,11 +58,11 @@ export default class DevicesPage extends View {
 
     return new Div().addClass("container").append(
       new Div().addClass("page-header").append(
-        new H1().addClass("page-title").append(
+        new H1().addClass("page-header__title").append(
           "Devices ",
-          new Span().addClass("page-count").setText(count),
+          new Span().addClass("page-header__count").setText(count),
         ),
-        new Button().addClass("btn").addClass("btn-primary")
+        new Button().addClass("btn").addClass("btn--primary")
           .on("click", () => this.addOpen(true))
           .setText("Add Device"),
       ),
@@ -81,14 +81,14 @@ export default class DevicesPage extends View {
         new Strong().setText(this.removeTarget),
         "? This cannot be undone.",
       ),
-      new P().addClass("modal-error")
+      new P().addClass("modal__error")
         .toggleAttribute("hidden", computed(() => !this.removeError()))
         .setText(computed(() => this.removeError() ?? "")),
     );
     const footer = new Div().append(
-      new Button().addClass("btn").addClass("btn-ghost")
+      new Button().addClass("btn").addClass("btn--ghost")
         .on("click", () => this.removeOpen(false)).setText("Cancel"),
-      new Button().addClass("btn").addClass("btn-danger")
+      new Button().addClass("btn").addClass("btn--danger")
         .setDisabled(this.removeInFlight)
         .setText(computed(() => this.removeInFlight() ? "Removing…" : "Remove"))
         .on("click", () => this.confirmRemove()),
@@ -152,14 +152,14 @@ class DeviceRow extends View {
   render() {
     const d = this.device;
     const typeLabel = d.type.charAt(0).toUpperCase() + d.type.slice(1);
-    return new Tr().addClass("device-row").setAttribute("data-device-name", d.name).append(
-      new Td().addClass("col-device-name").append(
+    return new Tr().addClass("device-list__row").setAttribute("data-device-name", d.name).append(
+      new Td().addClass("device-list__col-name").append(
         new Anchor().setAttribute("href", `/app/devices/${encodeURIComponent(d.name)}`)
-          .addClass("device-name-link").setText(d.name),
+          .addClass("device-list__name-link").setText(d.name),
       ),
-      new Td().addClass("col-device-type").setText(typeLabel),
-      new Td().addClass("col-device-actions").append(
-        new Button().addClass("btn-remove-device").setAttribute("aria-label", `Remove ${d.name}`)
+      new Td().addClass("device-list__col-type").setText(typeLabel),
+      new Td().addClass("device-list__col-actions").append(
+        new Button().addClass("device-list__remove-btn").setAttribute("aria-label", `Remove ${d.name}`)
           .on("click", () => this.onRemove())
           .setText("×"),
       ),

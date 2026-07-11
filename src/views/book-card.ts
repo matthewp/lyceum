@@ -11,7 +11,7 @@ function readBadge(): Div {
     .setAttribute("stroke-linecap", "round")
     .setAttribute("stroke-linejoin", "round")
     .append(new Path().setAttribute("d", "M5 12l5 5L20 7"));
-  return new Div().addClass("read-badge")
+  return new Div().addClass("book-card__badge")
     .setAttribute("aria-label", "Read")
     .setAttribute("title", "Read")
     .append(check);
@@ -33,27 +33,27 @@ export class BookCard extends View {
       .setAttribute("href", `/app/book/${b.id}`);
 
     const wrap = new Div()
-      .addClass("cover-wrap")
-      .toggleClass("is-read", isRead);
+      .addClass("book-card__cover")
+      .toggleClass("book-card__cover--read", isRead);
 
     if (b.has_cover) {
       wrap
         .setStyle("view-transition-name", `cover-${b.id}`)
         .append(
           new Img().setAttribute("src", `/app/cover/${b.id}`).setAttribute("alt", ""),
-          new Div().addClass("cover-overlay").append(
-            new Span().addClass("cover-title")
+          new Div().addClass("book-card__overlay").append(
+            new Span().addClass("book-card__title")
               .setStyle("view-transition-name", `title-${b.id}`)
               .setText(b.title),
-            new Span().addClass("cover-author").setText(b.authors.join(", ")),
+            new Span().addClass("book-card__author").setText(b.authors.join(", ")),
           ),
         );
     } else {
-      wrap.addClass("no-cover-tile").append(
-        new Span().addClass("no-cover-title")
+      wrap.addClass("book-card__cover--empty").append(
+        new Span().addClass("book-card__title book-card__title--empty")
           .setStyle("view-transition-name", `title-${b.id}`)
           .setText(b.title),
-        new Span().addClass("no-cover-author").setText(b.authors.join(", ")),
+        new Span().addClass("book-card__author book-card__author--empty").setText(b.authors.join(", ")),
       );
     }
 

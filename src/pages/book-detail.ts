@@ -73,27 +73,27 @@ export default class BookDetailPage extends View {
 
   private leftColumn() {
     const b = this.data.book;
-    const col = new Div().addClass("detail-col-left");
+    const col = new Div().addClass("detail-layout__col-left");
 
     // Cover
     if (b.has_cover) {
       col.append(
-        new Img().addClass("detail-cover")
+        new Img().addClass("detail-layout__cover")
           .setAttribute("src", `/app/cover/${b.id}`)
           .setAttribute("alt", "Cover")
           .setStyle("view-transition-name", `cover-${b.id}`),
       );
     } else {
-      col.append(new Div().addClass("no-cover").setText("No Cover"));
+      col.append(new Div().addClass("detail-layout__no-cover").setText("No Cover"));
     }
 
     // Format badges
-    const formatsBlock = new Div().addClass("detail-formats").setAttribute("id", "book-formats");
+    const formatsBlock = new Div().addClass("detail-layout__formats").setAttribute("id", "book-formats");
     effect(() => {
       formatsBlock.clear();
       for (const f of this.formats()) {
         formatsBlock.append(
-          new Button().addClass("format-badge").addClass("format-badge-btn")
+          new Button().addClass("format-badge").addClass("format-badge--button")
             .setAttribute("data-format", f)
             .setText(f)
             .on("click", () => this.openFormatModal(f)),
@@ -117,26 +117,26 @@ export default class BookDetailPage extends View {
 
   private rightColumn(pubYearValid: number | null) {
     const b = this.data.book;
-    const col = new Div().addClass("detail-col-right");
+    const col = new Div().addClass("detail-layout__col-right");
 
     if (b.series && b.series_id) {
       col.append(
-        new P().addClass("detail-series-label").append(
-          new Anchor().setAttribute("href", `/app/series/${b.series_id}`).addClass("series-link")
+        new P().addClass("detail-layout__series-label").append(
+          new Anchor().setAttribute("href", `/app/series/${b.series_id}`).addClass("detail-layout__series-link")
             .setText(b.series + (b.series_index != null ? ` · Book ${b.series_index}` : "")),
         ),
       );
     }
 
     col.append(
-      new H1().addClass("detail-title")
+      new H1().addClass("detail-layout__title")
         .setStyle("view-transition-name", `title-${b.id}`)
         .setText(b.title),
       this.authorsRow(),
     );
 
     if (pubYearValid || b.publisher || (b.languages?.length ?? 0) > 0) {
-      const metaRow = new P().addClass("detail-meta-row");
+      const metaRow = new P().addClass("detail-layout__meta-row");
       if (pubYearValid) metaRow.append(new Span().setText(String(pubYearValid)));
       if (b.publisher) metaRow.append(new Span().setText(b.publisher));
       if (b.languages && b.languages.length) metaRow.append(new Span().setText(b.languages.join(", ")));
@@ -156,10 +156,10 @@ export default class BookDetailPage extends View {
       const pct = Math.round(prog.percentage);
       col.append(
         new Div().addClass("detail-progress").append(
-          new Div().addClass("progress-bar-track").append(
-            new Div().addClass("progress-bar-fill").setStyle("width", `${pct}%`),
+          new Div().addClass("detail-progress__track").append(
+            new Div().addClass("detail-progress__fill").setStyle("width", `${pct}%`),
           ),
-          new Span().addClass("progress-label").setText(`${pct}%${prog.device ? ` · ${prog.device}` : ""}`),
+          new Span().addClass("detail-progress__label").setText(`${pct}%${prog.device ? ` · ${prog.device}` : ""}`),
         ),
       );
     }
@@ -170,7 +170,7 @@ export default class BookDetailPage extends View {
     // post-hydrate (RawHTML doesn't currently survive Zebra hydration).
     const description = b.comments ?? "";
     if (description) {
-      const descDiv = new Div().addClass("description");
+      const descDiv = new Div().addClass("detail-layout__description");
       if (isBrowser) {
         queueMicrotask(() => {
           if (descDiv.el) descDiv.el.innerHTML = description;
@@ -184,7 +184,7 @@ export default class BookDetailPage extends View {
 
   private authorsRow() {
     const b = this.data.book;
-    const row = new P().addClass("detail-author");
+    const row = new P().addClass("detail-layout__author");
     (b.authors ?? []).forEach((a, i) => {
       if (i > 0) row.append(", ");
       row.append(
@@ -195,7 +195,7 @@ export default class BookDetailPage extends View {
   }
 
   private tagsRow(tags: string[]) {
-    const row = new Div().addClass("detail-tags");
+    const row = new Div().addClass("detail-layout__tags");
     for (const t of tags) {
       row.append(
         new Anchor().addClass("tag").setAttribute("href", `/app/tag/${encodeURIComponent(t)}`).setText(t),
@@ -221,7 +221,7 @@ export default class BookDetailPage extends View {
         .append(
           new Button().setAttribute("type", "submit")
             .addClass("read-toggle")
-            .toggleClass("is-read", isRead)
+            .toggleClass("read-toggle--read", isRead)
             .append(
               checkIcon(),
               new Span().setText(computed(() => {

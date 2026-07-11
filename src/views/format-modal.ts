@@ -77,7 +77,7 @@ export class FormatModal extends View {
       this.rediscoverView(),
     );
 
-    const footer = new Button().addClass("btn").addClass("btn-ghost")
+    const footer = new Button().addClass("btn").addClass("btn--ghost")
       .toggleAttribute("hidden", computed(() => this.step().kind === "confirm"))
       .on("click", () => this.props.open(false))
       .setText("Close");
@@ -96,24 +96,24 @@ export class FormatModal extends View {
       .toggleAttribute("hidden", computed(() => this.step().kind !== "actions"));
 
     const list = new Div().addClass("fmt-action-list").append(
-      new Anchor().addClass("fmt-action-btn").setAttribute("id", "fmt-download")
+      new Anchor().addClass("fmt-action-list__btn").setAttribute("id", "fmt-download")
         .setAttribute("href", this.downloadHref)
         .setAttribute("download", this.downloadFilename)
         .append(downloadIcon(), "Download"),
       ...this.props.deviceNames.map(d =>
-        new Button().addClass("fmt-action-btn").setAttribute("data-send-device", d)
+        new Button().addClass("fmt-action-list__btn").setAttribute("data-send-device", d)
           .append(deviceIcon(), `Send to ${d}`)
           .on("click", () => this.doSend(d)),
       ),
-      new Button().addClass("fmt-action-btn").addClass("fmt-action-danger")
+      new Button().addClass("fmt-action-list__btn").addClass("fmt-action-list__btn--danger")
         .append(trashIcon(), "Remove format")
         .on("click", () => this.step({ kind: "confirm" })),
     );
 
     const status = new P().addClass("fmt-send-status")
       .toggleAttribute("hidden", computed(() => this.sendStatus() === null))
-      .toggleClass("fmt-success", computed(() => this.sendStatus()?.kind === "success"))
-      .toggleClass("fmt-error", computed(() => this.sendStatus()?.kind === "error"))
+      .toggleClass("fmt-send-status--success", computed(() => this.sendStatus()?.kind === "success"))
+      .toggleClass("fmt-send-status--error", computed(() => this.sendStatus()?.kind === "error"))
       .setText(computed(() => this.sendStatus()?.message ?? ""));
 
     return wrap.append(list, status);
@@ -127,10 +127,10 @@ export class FormatModal extends View {
         new P().append("Are you sure you want to remove ", new Strong().setText(fmt),
           " from this book? This cannot be undone."),
         new Div().addClass("fmt-confirm-buttons").append(
-          new Button().addClass("btn").addClass("btn-ghost")
+          new Button().addClass("btn").addClass("btn--ghost")
             .on("click", () => this.step({ kind: "actions" }))
             .setText("Cancel"),
-          new Button().addClass("btn").addClass("btn-danger")
+          new Button().addClass("btn").addClass("btn--danger")
             .setDisabled(this.removeInFlight)
             .setText(computed(() => this.removeInFlight() ? "Removing…" : "Remove"))
             .on("click", () => this.confirmRemove()),
@@ -142,7 +142,7 @@ export class FormatModal extends View {
     const wrap = new Div().setAttribute("id", "fmt-step-rediscover")
       .toggleAttribute("hidden", computed(() => this.step().kind !== "rediscover"));
 
-    const msg = new P().addClass("fmt-rediscover-msg")
+    const msg = new P().addClass("rediscover-message")
       .setText(computed(() => {
         const s = this.step();
         return s.kind === "rediscover" ? s.message : "";
@@ -155,14 +155,14 @@ export class FormatModal extends View {
       if (s.kind !== "rediscover") return;
       for (const d of s.devices) {
         list.append(
-          new Button().setAttribute("type", "button").addClass("device-pick-btn")
+          new Button().setAttribute("type", "button").addClass("device-select-list__btn")
             .setText(`${d.ip}:${d.port}`)
             .on("click", () => this.pickDevice(d)),
         );
       }
     });
 
-    const err = new P().addClass("modal-error")
+    const err = new P().addClass("modal__error")
       .toggleAttribute("hidden", computed(() => this.sendStatus()?.kind !== "error"))
       .setText(computed(() => this.sendStatus()?.message ?? ""));
 

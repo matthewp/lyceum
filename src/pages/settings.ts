@@ -25,19 +25,19 @@ export default class SettingsPage extends View {
   private flash(): Element[] {
     const f = this.data.flash;
     if (!f) return [];
-    return [new Div().addClass(f.kind === "success" ? "settings-success" : "settings-error").setText(f.message)];
+    return [new Div().addClass("settings-flash").addClass(f.kind === "success" ? "settings-flash--success" : "settings-flash--error").setText(f.message)];
   }
 
   private opdsSection() {
     const d = this.data;
     const section = new Section().addClass("settings-section").append(
-      new H2().addClass("settings-heading").setText("OPDS Catalog"),
-      new P().addClass("settings-sub").setText(
+      new H2().addClass("settings-section__heading").setText("OPDS Catalog"),
+      new P().addClass("settings-section__sub").setText(
         "Enable OPDS to let e-reader apps browse and download books from your library. Configure a username and password that you'll enter in your reader app.",
       ),
     );
     if (d.opdsEnabled) {
-      section.append(new P().addClass("settings-opds-url").setText(d.opdsUrl));
+      section.append(new P().addClass("settings-section__url").setText(d.opdsUrl));
     }
     section.append(this.settingsForm({
       action: "/app/settings/opds",
@@ -55,13 +55,13 @@ export default class SettingsPage extends View {
   private kosyncSection() {
     const d = this.data;
     const section = new Section().addClass("settings-section").append(
-      new H2().addClass("settings-heading").setText("KOSync (Reading Progress)"),
-      new P().addClass("settings-sub").setText(
+      new H2().addClass("settings-section__heading").setText("KOSync (Reading Progress)"),
+      new P().addClass("settings-section__sub").setText(
         "Enable KOSync to sync reading position across KOReader devices. Configure a username and password that you'll enter in KOReader's progress sync settings.",
       ),
     );
     if (d.kosyncEnabled) {
-      section.append(new P().addClass("settings-opds-url").setText(d.kosyncUrl));
+      section.append(new P().addClass("settings-section__url").setText(d.kosyncUrl));
     }
     section.append(this.settingsForm({
       action: "/app/settings/kosync",
@@ -90,23 +90,23 @@ export default class SettingsPage extends View {
     if (opts.enabled) enabledInput.setAttribute("checked", "");
 
     return new Form().setAttribute("method", "POST").setAttribute("action", opts.action).addClass("settings-form").append(
-      new Label().addClass("settings-toggle").append(
+      new Label().addClass("settings-form__toggle").append(
         enabledInput,
-        new Span().addClass("settings-toggle-label").setText(opts.enabledLabel),
+        new Span().addClass("settings-form__toggle-label").setText(opts.enabledLabel),
       ),
-      new Div().addClass("settings-field").append(
-        new Label().addClass("settings-label").setAttribute("for", opts.usernameId).setText("Username"),
-        new Input().addClass("settings-input").setAttribute("id", opts.usernameId).setAttribute("name", "username")
+      new Div().addClass("settings-form__field").append(
+        new Label().addClass("settings-form__label").setAttribute("for", opts.usernameId).setText("Username"),
+        new Input().addClass("settings-form__input").setAttribute("id", opts.usernameId).setAttribute("name", "username")
           .setAttribute("type", "text").setAttribute("value", opts.username)
           .setAttribute("placeholder", opts.usernamePlaceholder).setAttribute("autocomplete", "off"),
       ),
-      new Div().addClass("settings-field").append(
-        new Label().addClass("settings-label").setAttribute("for", opts.passwordId).setText("Password"),
-        new Input().addClass("settings-input").setAttribute("id", opts.passwordId).setAttribute("name", "password")
+      new Div().addClass("settings-form__field").append(
+        new Label().addClass("settings-form__label").setAttribute("for", opts.passwordId).setText("Password"),
+        new Input().addClass("settings-form__input").setAttribute("id", opts.passwordId).setAttribute("name", "password")
           .setAttribute("type", "password").setAttribute("placeholder", opts.passwordPlaceholder)
           .setAttribute("autocomplete", "new-password"),
       ),
-      new Button().setAttribute("type", "submit").addClass("settings-submit").setText("Save"),
+      new Button().setAttribute("type", "submit").addClass("settings-form__submit").setText("Save"),
     );
   }
 }

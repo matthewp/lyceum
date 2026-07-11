@@ -38,24 +38,24 @@ export class Pagination extends View {
 
     if (page > 1) {
       root.append(
-        new Anchor().addClass("page-link")
+        new Anchor().addClass("pagination__link")
           .setAttribute("href", buildPageUrl(basePath, page - 1, readFilter))
           .setText("← Previous"),
       );
     } else {
-      root.append(new Span().addClass("page-link").addClass("disabled").setText("← Previous"));
+      root.append(new Span().addClass("pagination__link").addClass("pagination__link--disabled").setText("← Previous"));
     }
 
-    root.append(new Span().addClass("page-info").setText(`Page ${page} of ${totalPages}`));
+    root.append(new Span().addClass("pagination__info").setText(`Page ${page} of ${totalPages}`));
 
     if (page < totalPages) {
       root.append(
-        new Anchor().addClass("page-link")
+        new Anchor().addClass("pagination__link")
           .setAttribute("href", buildPageUrl(basePath, page + 1, readFilter))
           .setText("Next →"),
       );
     } else {
-      root.append(new Span().addClass("page-link").addClass("disabled").setText("Next →"));
+      root.append(new Span().addClass("pagination__link").addClass("pagination__link--disabled").setText("Next →"));
     }
 
     return root;

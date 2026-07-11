@@ -16,15 +16,15 @@ export class BookRow extends View {
 
     const coverCell = b.has_cover
       ? new Img()
-          .addClass("cover-small")
+          .addClass("book-list__cover")
           .setAttribute("src", `/app/cover/${b.id}`)
           .setAttribute("alt", "")
           .setStyle("view-transition-name", `cover-${b.id}`)
-      : new Span().addClass("no-cover-small");
+      : new Span().addClass("book-list__cover--empty");
 
-    const titleCell = new Td().addClass("col-title").append(
+    const titleCell = new Td().addClass("book-list__col-title").append(
       new Anchor()
-        .addClass("row-title")
+        .addClass("book-list__title")
         .setAttribute("href", `/app/book/${b.id}`)
         .setStyle("view-transition-name", `title-${b.id}`)
         .setText(b.title),
@@ -32,11 +32,11 @@ export class BookRow extends View {
     if (b.series && b.series_id) {
       const label = b.series + (b.series_index != null ? ` #${b.series_index}` : "");
       titleCell.append(
-        new Anchor().addClass("row-series").setAttribute("href", `/app/series/${b.series_id}`).setText(label),
+        new Anchor().addClass("book-list__series").setAttribute("href", `/app/series/${b.series_id}`).setText(label),
       );
     }
 
-    const authorCell = new Td().addClass("col-author");
+    const authorCell = new Td().addClass("book-list__col-author");
     b.authors.forEach((a, i) => {
       if (i > 0) authorCell.append(", ");
       authorCell.append(
@@ -44,23 +44,23 @@ export class BookRow extends View {
       );
     });
 
-    const tagsCell = new Td().addClass("col-tags").append(
-      new Div().addClass("tag-list").append(
+    const tagsCell = new Td().addClass("book-list__col-tags").append(
+      new Div().addClass("book-list__tag-list").append(
         ...b.tags.map(t =>
           new Anchor().addClass("tag").setAttribute("href", `/app/tag/${encodeURIComponent(t)}`).setText(t),
         ),
       ),
     );
 
-    const yearCell = new Td().addClass("col-year");
+    const yearCell = new Td().addClass("book-list__col-year");
     if (yearStr) yearCell.setText(yearStr);
 
     const formatStr = b.formats.join(" · ");
-    const formatCell = new Td().addClass("col-format");
+    const formatCell = new Td().addClass("book-list__col-format");
     if (formatStr) formatCell.setText(formatStr);
 
-    return new Tr().addClass("book-row").append(
-      new Td().addClass("col-cover").append(coverCell),
+    return new Tr().addClass("book-list__row").append(
+      new Td().addClass("book-list__col-cover").append(coverCell),
       titleCell,
       authorCell,
       yearCell,

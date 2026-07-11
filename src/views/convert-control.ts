@@ -46,22 +46,22 @@ export class ConvertControl extends View {
     const wrap = new Div().addClass("convert-wrap").setAttribute("id", "convert-wrap")
       .toggleAttribute("hidden", computed(() => convertable().length === 0));
 
-    const btn = new Button().addClass("convert-btn").setAttribute("id", "convert-btn")
+    const btn = new Button().addClass("convert-wrap__btn").setAttribute("id", "convert-btn")
       .setAttribute("aria-expanded", computed(() => this.open() ? "true" : "false"))
-      .toggleClass("loading", this.inFlight)
-      .toggleClass("convert-error", this.errored)
+      .toggleClass("convert-wrap__btn--loading", this.inFlight)
+      .toggleClass("convert-wrap__btn--error", this.errored)
       .setDisabled(this.inFlight)
       .on("click", (e) => { e.stopPropagation(); this.open(!this.open()); })
       .append(
         convertIcon(),
-        new Span().addClass("btn-label").setText("Convert"),
-        new Span().addClass("btn-spinner"),
+        new Span().addClass("convert-wrap__label").setText("Convert"),
+        new Span().addClass("convert-wrap__spinner"),
         chevronIcon(),
       );
 
-    const dropdown = new Ul().addClass("convert-dropdown").setAttribute("id", "convert-dropdown")
+    const dropdown = new Ul().addClass("convert-wrap__dropdown").setAttribute("id", "convert-dropdown")
       .setAttribute("role", "menu")
-      .toggleClass("open", this.open)
+      .toggleClass("convert-wrap__dropdown--open", this.open)
       .on("click", (e) => e.stopPropagation());
 
     // Re-render dropdown items when the formats list changes. Block-body
@@ -71,7 +71,7 @@ export class ConvertControl extends View {
       for (const f of convertable()) {
         dropdown.append(
           new Li().append(
-            new Button().addClass("convert-option").setAttribute("data-fmt", f)
+            new Button().addClass("convert-wrap__option").setAttribute("data-fmt", f)
               .setText(f)
               .on("click", () => this.run(f)),
           ),
@@ -119,7 +119,7 @@ function convertIcon(): Svg {
 }
 
 function chevronIcon(): Svg {
-  return new Svg().addClass("btn-chevron")
+  return new Svg().addClass("convert-wrap__chevron")
     .setAttribute("xmlns", "http://www.w3.org/2000/svg")
     .setAttribute("width", "12").setAttribute("height", "12").setAttribute("viewBox", "0 0 24 24")
     .setAttribute("fill", "none").setAttribute("stroke", "currentColor").setAttribute("stroke-width", "2.5")

@@ -11,7 +11,7 @@ export class ViewToggle extends View {
 
   private btn(mode: ViewMode, label: string) {
     return new Button()
-      .addClass("view-btn")
+      .addClass("view-toggle__btn")
       .toggleClass("active", () => viewMode() === mode)
       .setAttribute("data-view", mode)
       .on("click", () => viewMode(mode))

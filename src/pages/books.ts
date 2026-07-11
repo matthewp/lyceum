@@ -29,11 +29,11 @@ export default class BooksPage extends View {
 
     return new Div().addClass("container").append(
       new Div().addClass("page-header").append(
-        new H1().addClass("page-title").append(
+        new H1().addClass("page-header__title").append(
           pageTitle + " ",
-          new Span().addClass("page-count").setText(`${total} books`),
+          new Span().addClass("page-header__count").setText(`${total} books`),
         ),
-        new Div().addClass("page-header-controls").append(
+        new Div().addClass("page-header__controls").append(
           new FilterDropdown({ readFilter, basePath }),
           new ViewToggle(),
         ),
@@ -58,13 +58,13 @@ export default class BooksPage extends View {
   private bookList(books: BookSummary[]) {
     return new Table().addClass("book-list").append(
       new Thead().append(
-        new Tr().addClass("list-header").append(
-          new Th().addClass("col-cover"),
-          new Th().addClass("col-title").setText("Title"),
-          new Th().addClass("col-author").setText("Author"),
-          new Th().addClass("col-year").setText("Year"),
-          new Th().addClass("col-tags").setText("Tags"),
-          new Th().addClass("col-format").setText("Format"),
+        new Tr().addClass("book-list__header").append(
+          new Th().addClass("book-list__col-cover"),
+          new Th().addClass("book-list__col-title").setText("Title"),
+          new Th().addClass("book-list__col-author").setText("Author"),
+          new Th().addClass("book-list__col-year").setText("Year"),
+          new Th().addClass("book-list__col-tags").setText("Tags"),
+          new Th().addClass("book-list__col-format").setText("Format"),
         ),
       ),
       new List<BookSummary>(

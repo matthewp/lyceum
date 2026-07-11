@@ -34,9 +34,9 @@ export class RatingForm extends View {
       .setAttribute("name", "rating")
       // Clicking the active star clears the rating (current === clicked → 0).
       .setAttribute("value", computed(() => String(val === this.rating() ? 0 : val)))
-      .addClass("star-btn")
-      .toggleClass("filled", filled)
-      .toggleClass("preview", preview)
+      .addClass("rating-form__star")
+      .toggleClass("rating-form__star--filled", filled)
+      .toggleClass("rating-form__star--preview", preview)
       .setAttribute("aria-label", `${val} star`)
       .setText(computed(() => filled() ? "★" : "☆"))
       .on("mouseenter", () => this.hovered(val))

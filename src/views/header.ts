@@ -21,12 +21,12 @@ export class AppHeader extends View {
     .setAttribute("type", "text")
     .setAttribute("name", "q")
     .setAttribute("placeholder", "Search books...")
-    .addClass("search-box");
+    .addClass("search-form__input");
 
   render() {
     const root = new HeaderEl()
       .addClass("header")
-      .toggleClass("opaque", this.opaque);
+      .toggleClass("header--opaque", this.opaque);
 
     new Window().on("scroll", () => this.opaque(window.scrollY > 30));
     new Document().on("keydown", (e) => {
@@ -39,13 +39,13 @@ export class AppHeader extends View {
     new Document().on("click", () => this.menuOpen(false));
 
     return root.append(
-      new Div().addClass("header-left").append(
+      new Div().addClass("header__left").append(
         new Anchor().setAttribute("href", "/app").addClass("logo").append(
-          new Img().setAttribute("src", "/public/logo.webp").setAttribute("alt", "").addClass("logo-img"),
+          new Img().setAttribute("src", "/public/logo.webp").setAttribute("alt", "").addClass("logo__img"),
           "Lyceum",
         ),
       ),
-      new Div().addClass("header-right").append(
+      new Div().addClass("header__right").append(
         new Form()
           .setAttribute("action", "/app/search")
           .setAttribute("method", "GET")
@@ -53,7 +53,7 @@ export class AppHeader extends View {
           .append(
             searchIcon(),
             this.searchInput,
-            new Element("kbd").addClass("search-kbd").append("Ctrl K"),
+            new Element("kbd").addClass("search-form__kbd").append("Ctrl K"),
           ),
         this.userMenu(),
       ),
@@ -63,7 +63,7 @@ export class AppHeader extends View {
   private userMenu(): Element {
     return new Div().addClass("user-menu").append(
       new Button()
-        .addClass("user-btn")
+        .addClass("user-menu__btn")
         .setAttribute("id", "user-btn")
         .setAttribute("aria-label", "User menu")
         .setAttribute("aria-expanded", () => (this.menuOpen() ? "true" : "false"))
@@ -73,12 +73,12 @@ export class AppHeader extends View {
         })
         .append(userBookIcon()),
       new Div()
-        .addClass("user-dropdown")
+        .addClass("user-menu__dropdown")
         .setAttribute("id", "user-dropdown")
         .toggleAttribute("hidden", () => !this.menuOpen())
         .append(
           new Form().setAttribute("method", "POST").setAttribute("action", "/app/logout").append(
-            new Button().setAttribute("type", "submit").addClass("dropdown-item").append("Sign out"),
+            new Button().setAttribute("type", "submit").addClass("user-menu__dropdown-item").append("Sign out"),
           ),
         ),
     );

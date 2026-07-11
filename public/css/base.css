@@ -2,121 +2,26 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --accent: #b45309;
-  --accent-fg: #fff;
-  --accent-subtle: rgba(180, 83, 9, 0.1);
-  --accent-subtle-border: rgba(180, 83, 9, 0.28);
-  --accent-2: #0284c7;
-  --accent-2-fg: #fff;
-  --accent-2-subtle: rgba(2, 132, 199, 0.08);
-
-  --bg: #fdf8f0;
-  --bg-subtle: #f5ece0;
-  --bg-muted: #ede0ce;
-  --border: #2c1810;
-  --text: #2c1810;
-  --text-secondary: #7c5c48;
-  --text-tertiary: #b89880;
-  --text-muted: #5c3d2e;
-  --text-strong: #1a0e08;
-  --shadow: rgba(44,24,16,0.08);
-  --shadow-cover: rgba(44,24,16,0.25);
-  --hero-bg: #170e08;
-  --hero-accent: #f59e0b;
-
-  /* Component palette (consumed by layout/book-table/forms/devices/etc).
-     :root holds the LIGHT values; [data-theme="dark"] overrides below.
-     --fg-rgb is a raw "r,g,b" triplet so component CSS can build
-     rgba(var(--fg-rgb), <alpha>) for text/borders/tints at any opacity. */
-  --fg-rgb: 44, 24, 16;
-  --bg-deep: #fdf8f0;
-  --bg-panel: #f5ece0;
-  --bg-panel-hover: #ede0ce;
-  --c-amber: #b45309;
-  --c-amber-rgb: 180, 83, 9;
-  --c-amber-fg: #fff;
-  --c-amber-fg-rgb: 255, 255, 255;
-  --c-cyan: #0e7490;
-  --c-cyan-rgb: 14, 116, 144;
-  --c-pink: #be185d;
-  --c-pink-rgb: 190, 24, 93;
-  --on-color: #fff;
-  --c-danger: #dc2626;
-  --c-danger-rgb: 220, 38, 38;
-  --c-danger-soft: #dc2626;
-  --c-success: #16a34a;
-
-  --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
-  --font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Mono", monospace;
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-  --accent: #f59e0b;
-  --accent-fg: #1c1917;
-  --accent-subtle: rgba(245, 158, 11, 0.12);
-  --accent-subtle-border: rgba(245, 158, 11, 0.3);
-  --accent-2: #38bdf8;
-  --accent-2-fg: #0a0908;
-  --accent-2-subtle: rgba(56, 189, 248, 0.1);
-
-  --bg: #170e08;
-  --bg-subtle: #221509;
-  --bg-muted: #2e1d10;
-  --border: #e8ddd0;
-  --text: #e8ddd0;
-  --text-secondary: #c4a882;
-  --text-tertiary: #7a5c40;
-  --text-muted: #c4a882;
-  --text-strong: #f0e8dc;
-  --shadow: rgba(0,0,0,0.3);
-  --shadow-cover: rgba(0,0,0,0.6);
-  --hero-bg: #170e08;
-  --hero-accent: #f59e0b;
-
-  /* Component palette — dark values (match the colors components used to
-     hardcode, so dark mode looks identical to before the refactor). */
-  --fg-rgb: 240, 232, 220;
-  --bg-deep: #0a0908;
-  --bg-panel: #1a1814;
-  --bg-panel-hover: #251e18;
-  --c-amber: #fbbf24;
-  --c-amber-rgb: 251, 191, 36;
-  --c-amber-fg: #0a0908;
-  --c-amber-fg-rgb: 10, 9, 8;
-  --c-cyan: #06b6d4;
-  --c-cyan-rgb: 6, 182, 212;
-  --c-pink: #ec4899;
-  --c-pink-rgb: 236, 72, 153;
-  --on-color: #fff;
-  --c-danger: #ef4444;
-  --c-danger-rgb: 239, 68, 68;
-  --c-danger-soft: #f87171;
-  --c-success: #22c55e;
-}
-
 body {
-  font-family: var(--font);
+  font-family: var(--font-sans);
   font-size: 16px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
-  transition: background-color 200ms, color 200ms;
+  transition: background-color var(--duration-200), color var(--duration-200);
 }
 
 a { color: inherit; }
 
 .tag {
-  font-size: 0.8em;
+  font-size: var(--text-xs);
   color: var(--accent);
   background: var(--accent-subtle);
-  border: 1px solid var(--accent-subtle-border);
-  border-radius: 6px;
-  padding: 3px 10px;
+  border: var(--border-1) solid var(--accent-subtle-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2-5);
   text-decoration: none;
-  transition: border-color 150ms, color 150ms, background-color 150ms;
+  transition: border-color var(--duration-150), color var(--duration-150), background-color var(--duration-150);
   white-space: nowrap;
   display: inline-block;
 }
@@ -124,10 +29,4 @@ a { color: inherit; }
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-fg);
-}
-
-.format {
-  font-size: 0.8em;
-  font-family: var(--font-mono);
-  color: var(--text-tertiary);
 }

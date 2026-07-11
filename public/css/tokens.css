@@ -1,0 +1,307 @@
+/* --- Tideway scale tokens (only the ones this project uses) --- */
+
+:root {
+  /* Spacing (quarter-rem scale) */
+  --space-px: 1px;
+  --space-0-5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-2-5: 0.625rem;
+  --space-3: 0.75rem;
+  --space-3-5: 0.875rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-9: 2.25rem;
+  --space-10: 2.5rem;
+  --space-11: 2.75rem;
+  --space-12: 3rem;
+  --space-14: 3.5rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  /* Typography
+     Font sizes here are project-specific em multipliers, not Tideway's
+     absolute rem scale: several are deliberately parent-relative and
+     compound with an ancestor's size (e.g. --text-2xs against a 2.4em
+     heading). Converting them to root-relative rem tokens would change
+     the rendered size wherever they're nested, so they're kept as a
+     dedicated, deduped em scale instead — flagging the deviation here. */
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Mono", monospace;
+
+  /* Absolute (root-relative) size — used where the original design set a
+     fixed px size rather than an em multiplier of its container. */
+  --text-xs-abs: 0.75rem;
+
+  --text-4xs: 0.45em;
+  --text-3xs: 0.5em;
+  --text-2xs: 0.72em;
+  --text-xs: 0.8em;
+  --text-sm: 0.85em;
+  --text-base: 0.9em;
+  --text-md: 0.95em;
+  --text-lg: 1.05em;
+  --text-xl: 1.25em;
+  --text-2xl: 1.5em;
+  --text-3xl: 2em;
+  --text-4xl: 2.4em;
+  --text-5xl: 3em;
+
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --font-extrabold: 800;
+
+  --tracking-tight: -0.03em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  --leading-none: 1;
+  --leading-tight: 1.05;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+  --leading-loose: 1.85;
+
+  /* Border radius */
+  --radius-sm: 2px;
+  --radius-base: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* Border width */
+  --border-1: 1px;
+  --border-1-5: 1.5px;
+  --border-2: 2px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 6px rgb(0 0 0 / 0.4), 0 0 0 2px rgb(0 0 0 / 0.25);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 8px 32px rgb(0 0 0 / 0.6);
+  --shadow-xl: 0 16px 56px rgb(0 0 0 / 0.7), 0 4px 12px rgb(0 0 0 / 0.4);
+  --shadow-2xl: 0 24px 80px rgb(0 0 0 / 0.8), 0 4px 16px rgb(0 0 0 / 0.4);
+
+  /* Z-index */
+  --z-0: 0;
+  --z-raised: 2;
+  --z-sidebar: 8;
+  --z-sticky: 10;
+  --z-dropdown: 30;
+  --z-overlay: 40;
+  --z-modal: 100;
+
+  /* Blur */
+  --blur-xs: 4px;
+
+  /* Transitions */
+  --duration-75: 75ms;
+  --duration-100: 100ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-250: 250ms;
+  --duration-300: 300ms;
+  --duration-500: 500ms;
+  --duration-600: 600ms;
+  --duration-700: 700ms;
+  --duration-1000: 1000ms;
+
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Breakpoints (reference only — custom properties don't work in @media) */
+  /* md: 768px */
+  /* lg: 900px */
+}
+
+/* --- Color primitives ---
+   Brand palette, hand-tuned per light/dark theme. Kept as named primitives
+   rather than snapped to Tideway's generic OKLCH scale: these are a
+   deliberate brand identity (parchment/espresso in light, void/amber/cyan/
+   pink in dark), not arbitrary picks, so re-deriving them from the generic
+   palette would silently shift the app's look. */
+
+:root {
+  /* Light neutrals ("parchment") */
+  --palette-parchment-50: #fdf8f0;
+  --palette-parchment-100: #f5ece0;
+  --palette-parchment-200: #ede0ce;
+
+  /* Light text ("espresso") */
+  --palette-espresso-400: #b89880;
+  --palette-espresso-500: #7c5c48;
+  --palette-espresso-600: #5c3d2e;
+  --palette-espresso-700: #2c1810;
+  --palette-espresso-800: #1a0e08;
+
+  /* Dark neutrals ("void") */
+  --palette-void-100: #e8ddd0;
+  --palette-void-200: #f0e8dc;
+  --palette-void-250: #f5f0eb;
+  --palette-void-300: #c4a882;
+  --palette-void-400: #7a5c40;
+  --palette-void-800: #2e1d10;
+  --palette-void-850: #251e18;
+  --palette-void-900: #221509;
+  --palette-void-950: #170e08;
+  --palette-void-975: #0a0908;
+  --palette-void-980: #0f0b08;
+  --palette-void-985: #1a1410;
+  --palette-void-990: #1a1714;
+  --palette-void-995: #1a1814;
+  --palette-void-1000: #1c1917;
+
+  /* Brand accents */
+  --palette-amber-light: #b45309;
+  --palette-amber-dark: #f59e0b;
+  --palette-amber-vivid: #fbbf24;
+  --palette-sky-light: #0284c7;
+  --palette-sky-dark: #38bdf8;
+  --palette-cyan-light: #0e7490;
+  --palette-cyan-dark: #06b6d4;
+  --palette-pink-light: #be185d;
+  --palette-pink-dark: #ec4899;
+
+  /* Status */
+  --palette-danger-light: #dc2626;
+  --palette-danger-dark: #ef4444;
+  --palette-danger-soft-light: #dc2626;
+  --palette-danger-soft-dark: #f87171;
+  --palette-danger-soft-dark-rgb: 248, 113, 113;
+  --palette-success-light: #16a34a;
+  --palette-success-dark: #22c55e;
+  --palette-success-soft: #4ade80;
+  --palette-success-soft-rgb: 74, 222, 128;
+
+  --palette-white: #fff;
+}
+
+/* --- Semantic roles ---
+   Components read color only from these. The [data-theme] override below
+   is the project's existing manual light/dark toggle. */
+
+:root {
+  --surface: var(--palette-parchment-50);
+  --surface-subtle: var(--palette-parchment-100);
+  --surface-muted: var(--palette-parchment-200);
+  --surface-raised: var(--palette-parchment-100);
+  --surface-hover: var(--palette-parchment-200);
+  /* Theme-aware "dramatic" background for hero-style pages (login, upload) —
+     equals --surface in light mode but drops to the deepest void in dark. */
+  --surface-deep: var(--palette-parchment-50);
+  /* Fixed near-black used by illustrated, always-dark surfaces (landing
+     page, book-backdrop, cover art overlays) regardless of theme. */
+  --surface-inverse: var(--palette-void-975);
+  /* Floating chrome that's always dark regardless of theme (modal panel,
+     its <select> option list, the convert-format dropdown). */
+  --surface-panel-inverse: var(--palette-void-980);
+  --surface-select-inverse: var(--palette-void-985);
+  --surface-dropdown-inverse: var(--palette-void-990);
+
+  --text: var(--palette-espresso-700);
+  --text-rgb: 44, 24, 16;
+  --text-strong: var(--palette-espresso-800);
+  --text-secondary: var(--palette-espresso-500);
+  --text-tertiary: var(--palette-espresso-400);
+
+  --border: var(--palette-espresso-700);
+
+  --accent: var(--palette-amber-light);
+  --accent-fg: var(--palette-white);
+  --accent-subtle: rgb(180 83 9 / 0.1);
+  --accent-subtle-border: rgb(180 83 9 / 0.28);
+
+  --accent-secondary: var(--palette-sky-light);
+  --accent-secondary-subtle: rgb(2 132 199 / 0.08);
+
+  /* Interactive accent: links, focus rings, secondary buttons/badges. */
+  --accent-info: var(--palette-cyan-light);
+  --accent-info-rgb: 14, 116, 144;
+  /* Hover/energy accent used throughout as the ":hover" color. */
+  --accent-highlight: var(--palette-pink-light);
+  --accent-highlight-rgb: 190, 24, 93;
+
+  /* Solid accent fill (primary buttons, badges) — a separate shade from
+     --accent because the dark-mode fill needs a brighter amber for contrast
+     than the theme's default accent color. */
+  --accent-fill: var(--palette-amber-light);
+  --accent-fill-rgb: 180, 83, 9;
+  --on-accent-fill: var(--palette-white);
+  --on-accent-fill-rgb: 255, 255, 255;
+  /* Dimmer amber for legible overlays on photographic cover art. */
+  --accent-hero: var(--palette-amber-dark);
+  /* Fixed off-white heading color for text on the blurred cover backdrop —
+     always this shade, regardless of theme (like --accent-hero). */
+  --text-hero: var(--palette-void-250);
+
+  --danger: var(--palette-danger-light);
+  --danger-rgb: 220, 38, 38;
+  --danger-soft: var(--palette-danger-soft-light);
+  --success: var(--palette-success-light);
+  --success-rgb: 22, 163, 74;
+
+  /* White text used on saturated fills (hover states) and on always-dark
+     photographic surfaces (cover art overlays) regardless of theme. */
+  --on-inverse: var(--palette-white);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface: var(--palette-void-975);
+  --surface-subtle: var(--palette-void-900);
+  --surface-muted: var(--palette-void-800);
+  --surface-raised: var(--palette-void-995);
+  --surface-hover: var(--palette-void-850);
+  --surface-deep: var(--palette-void-975);
+  --surface-inverse: var(--palette-void-975);
+  --surface-panel-inverse: var(--palette-void-980);
+  --surface-select-inverse: var(--palette-void-985);
+  --surface-dropdown-inverse: var(--palette-void-990);
+
+  --text: var(--palette-void-100);
+  --text-rgb: 240, 232, 220;
+  --text-strong: var(--palette-void-200);
+  --text-secondary: var(--palette-void-300);
+  --text-tertiary: var(--palette-void-400);
+
+  --border: var(--palette-void-100);
+
+  --accent: var(--palette-amber-dark);
+  --accent-fg: var(--palette-void-1000);
+  --accent-subtle: rgb(245 158 11 / 0.12);
+  --accent-subtle-border: rgb(245 158 11 / 0.3);
+
+  --accent-secondary: var(--palette-sky-dark);
+  --accent-secondary-subtle: rgb(56 189 248 / 0.1);
+
+  --accent-info: var(--palette-cyan-dark);
+  --accent-info-rgb: 6, 182, 212;
+  --accent-highlight: var(--palette-pink-dark);
+  --accent-highlight-rgb: 236, 72, 153;
+
+  --accent-fill: var(--palette-amber-vivid);
+  --accent-fill-rgb: 251, 191, 36;
+  --on-accent-fill: var(--palette-void-975);
+  --on-accent-fill-rgb: 10, 9, 8;
+  --accent-hero: var(--palette-amber-dark);
+  --text-hero: var(--palette-void-250);
+
+  --danger: var(--palette-danger-dark);
+  --danger-rgb: 239, 68, 68;
+  --danger-soft: var(--palette-danger-soft-dark);
+  --success: var(--palette-success-dark);
+  --success-rgb: 34, 197, 94;
+
+  --on-inverse: var(--palette-white);
+}

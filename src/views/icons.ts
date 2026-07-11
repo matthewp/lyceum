@@ -50,13 +50,13 @@ export const sunIcon = (): Svg =>
     new Line().setAttribute("x1", "21").setAttribute("y1", "12").setAttribute("x2", "23").setAttribute("y2", "12"),
     new Line().setAttribute("x1", "4.22").setAttribute("y1", "19.78").setAttribute("x2", "5.64").setAttribute("y2", "18.36"),
     new Line().setAttribute("x1", "18.36").setAttribute("y1", "5.64").setAttribute("x2", "19.78").setAttribute("y2", "4.22"),
-  ).addClass("theme-icon theme-icon-sun");
+  ).addClass("sidebar__item-icon sidebar__item-icon--sun");
 
 export const moonIcon = (): Svg =>
   svg(
     18,
     new Path().setAttribute("d", "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"),
-  ).addClass("theme-icon theme-icon-moon");
+  ).addClass("sidebar__item-icon sidebar__item-icon--moon");
 
 export const searchIcon = (): Svg =>
   svg(
@@ -65,10 +65,10 @@ export const searchIcon = (): Svg =>
     new Line().setAttribute("x1", "21").setAttribute("y1", "21").setAttribute("x2", "16.65").setAttribute("y2", "16.65"),
   )
     .setAttribute("stroke-width", "2.5")
-    .addClass("search-icon");
+    .addClass("search-form__icon");
 
 export const userBookIcon = (): Svg =>
-  svg(28, ...bookShape()).addClass("user-book-icon");
+  svg(28, ...bookShape()).addClass("user-menu__icon");
 
 export const gridIcon = (): Svg =>
   new Svg()
@@ -78,10 +78,10 @@ export const gridIcon = (): Svg =>
     .setAttribute("viewBox", "0 0 24 24")
     .setAttribute("fill", "currentColor")
     .setAttribute("stroke", "none")
-    .addClass("grid-icon")
+    .addClass("sidebar-toggle__icon")
     .append(
-      new Rect().addClass("grid-tl").setAttribute("x", "3").setAttribute("y", "3").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
-      new Rect().addClass("grid-tr").setAttribute("x", "13").setAttribute("y", "3").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
-      new Rect().addClass("grid-bl").setAttribute("x", "3").setAttribute("y", "13").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
-      new Rect().addClass("grid-br").setAttribute("x", "13").setAttribute("y", "13").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
+      new Rect().addClass("sidebar-toggle__icon-tl").setAttribute("x", "3").setAttribute("y", "3").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
+      new Rect().addClass("sidebar-toggle__icon-tr").setAttribute("x", "13").setAttribute("y", "3").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
+      new Rect().addClass("sidebar-toggle__icon-bl").setAttribute("x", "3").setAttribute("y", "13").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
+      new Rect().addClass("sidebar-toggle__icon-br").setAttribute("x", "13").setAttribute("y", "13").setAttribute("width", "8").setAttribute("height", "8").setAttribute("rx", "2"),
     );

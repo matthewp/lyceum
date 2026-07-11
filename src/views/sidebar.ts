@@ -14,7 +14,7 @@ export class Sidebar extends View {
 
   render() {
     return new Aside().addClass("sidebar").setAttribute("id", "sidebar").append(
-      new Nav().addClass("sidebar-nav").append(
+      new Nav().addClass("sidebar__nav").append(
         this.item("/app", "library", libraryIcon(), "Library"),
         this.item("/app/devices", "devices", devicesIcon(), "Devices"),
         this.item("/app/settings", "settings", settingsIcon(), "Settings"),
@@ -27,8 +27,8 @@ export class Sidebar extends View {
     const isActive = computed(() => this.activeNav() === section);
     return new Anchor()
       .setAttribute("href", href)
-      .addClass("sidebar-item")
-      .toggleClass("active", isActive)
+      .addClass("sidebar__item")
+      .toggleClass("sidebar__item--active", isActive)
       .append(icon, label);
   }
 }

@@ -1,2 +1,6 @@
 # rosie-lock v1
+migrate matthewp/tideway main 041301b7e8d3111b0034a827e458e7ab7be7a4e7 2026-07-11T17:44:58Z auto skill
+prune matthewp/tideway main 041301b7e8d3111b0034a827e458e7ab7be7a4e7 2026-07-11T17:44:58Z auto skill
+review matthewp/tideway main 041301b7e8d3111b0034a827e458e7ab7be7a4e7 2026-07-11T17:44:58Z auto skill
+style matthewp/tideway main 041301b7e8d3111b0034a827e458e7ab7be7a4e7 2026-07-11T17:44:58Z auto skill
 zebra matthewp/zebra v0.3.1 f41fe0e0b645a258ba4ca0d3516c37fd8bdd5a6e 2026-05-17T23:05:06Z auto skill

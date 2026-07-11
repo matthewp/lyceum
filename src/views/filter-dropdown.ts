@@ -49,7 +49,7 @@ export class FilterDropdown extends View {
     };
 
     const select = new Select()
-      .addClass("filter-dropdown-select")
+      .addClass("filter-dropdown__select")
       .setAttribute("id", "books-filter")
       .setAttribute("aria-label", "Filter books")
       .on("change", (e) => {
@@ -66,7 +66,7 @@ export class FilterDropdown extends View {
 
     return new Div().addClass("filter-dropdown").append(
       new Label()
-        .addClass("filter-dropdown-label")
+        .addClass("filter-dropdown__label")
         .setAttribute("for", "books-filter")
         .setText("Filter:"),
       select,

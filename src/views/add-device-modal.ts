@@ -77,12 +77,12 @@ export class AddDeviceModal extends View {
       // Step 1 panel
       new Div().setAttribute("id", "add-step-1").toggleAttribute("hidden", () => this.step() !== 1).append(
         this.field("Name", "device-name", () =>
-          new Input().addClass("modal-input").setAttribute("id", "device-name")
+          new Input().addClass("modal__input").setAttribute("id", "device-name")
             .setAttribute("placeholder", "My Boox").setAttribute("autocomplete", "off")
             .setValue(this.name).on("input", (e) => this.name((e.target as HTMLInputElement).value)),
         ),
         this.field("Type", "device-type", () =>
-          new Select().addClass("modal-select").setAttribute("id", "device-type")
+          new Select().addClass("modal__select").setAttribute("id", "device-type")
             .setValue(this.type)
             .on("change", (e) => this.type((e.target as HTMLSelectElement).value as DeviceType))
             .append(
@@ -93,12 +93,12 @@ export class AddDeviceModal extends View {
         ),
         // Conditional fields
         this.conditionalField("Email", "device-email", computed(() => !isCrossPoint()), () =>
-          new Input().addClass("modal-input").setAttribute("id", "device-email")
+          new Input().addClass("modal__input").setAttribute("id", "device-email")
             .setAttribute("type", "email").setAttribute("autocomplete", "off")
             .setValue(this.email).on("input", (e) => this.email((e.target as HTMLInputElement).value)),
         ),
         this.conditionalField("Region", "device-region", isBoox, () =>
-          new Select().addClass("modal-select").setAttribute("id", "device-region")
+          new Select().addClass("modal__select").setAttribute("id", "device-region")
             .setValue(this.region)
             .on("change", (e) => this.region((e.target as HTMLSelectElement).value as "us" | "eu" | "cn"))
             .append(
@@ -109,18 +109,18 @@ export class AddDeviceModal extends View {
         ),
         this.conditionalField("Password", "device-password",
           computed(() => !isBoox() && !isCrossPoint()), () =>
-          new Input().addClass("modal-input").setAttribute("id", "device-password")
+          new Input().addClass("modal__input").setAttribute("id", "device-password")
             .setAttribute("type", "password")
             .setValue(this.password).on("input", (e) => this.password((e.target as HTMLInputElement).value)),
         ),
         this.conditionalField("IP Address", "device-ip", isCrossPoint, () =>
-          new Input().addClass("modal-input").setAttribute("id", "device-ip")
+          new Input().addClass("modal__input").setAttribute("id", "device-ip")
             .setAttribute("placeholder", "192.168.1.100").setAttribute("autocomplete", "off")
             .setValue(this.ip).on("input", (e) => this.ip((e.target as HTMLInputElement).value)),
           " (optional — leave blank to auto-discover)",
         ),
         this.conditionalField("Port", "device-port", isCrossPoint, () =>
-          new Input().addClass("modal-input").setAttribute("id", "device-port")
+          new Input().addClass("modal__input").setAttribute("id", "device-port")
             .setAttribute("placeholder", "81").setAttribute("autocomplete", "off")
             .setValue(this.port).on("input", (e) => this.port((e.target as HTMLInputElement).value)),
           " (optional, default 81)",
@@ -135,14 +135,14 @@ export class AddDeviceModal extends View {
         ),
         // Or: code input
         new Div().toggleAttribute("hidden", () => this.discoveredDevices().length !== 0).append(
-          new Label().addClass("modal-label").setText(
+          new Label().addClass("modal__label").setText(
             computed(() => this.type() === "crosspoint" ? "Selection" : "Verification Code"),
           ),
-          new Input().addClass("modal-input").setAttribute("autocomplete", "off")
+          new Input().addClass("modal__input").setAttribute("autocomplete", "off")
             .setValue(this.code).on("input", (e) => this.code((e.target as HTMLInputElement).value)),
         ),
       ),
-      new P().addClass("modal-error")
+      new P().addClass("modal__error")
         .toggleAttribute("hidden", computed(() => !this.error()))
         .setText(computed(() => this.error() ?? "")),
     );
@@ -157,9 +157,9 @@ export class AddDeviceModal extends View {
     });
 
     const footer = new Div().append(
-      new Button().addClass("btn").addClass("btn-ghost")
+      new Button().addClass("btn").addClass("btn--ghost")
         .on("click", () => this.props.open(false)).setText("Cancel"),
-      new Button().addClass("btn").addClass("btn-primary")
+      new Button().addClass("btn").addClass("btn--primary")
         .setDisabled(this.inFlight)
         // Hide the submit on step-2 device-picker (user clicks a device row).
         .toggleAttribute("hidden", computed(() => this.step() === 2 && this.discoveredDevices().length > 0))
@@ -177,8 +177,8 @@ export class AddDeviceModal extends View {
   }
 
   private field(label: string, id: string, mkInput: () => Element): Element {
-    return new Div().addClass("modal-field").append(
-      new Label().addClass("modal-label").setAttribute("for", id).setText(label),
+    return new Div().addClass("modal__field").append(
+      new Label().addClass("modal__label").setAttribute("for", id).setText(label),
       mkInput(),
     );
   }
@@ -190,14 +190,14 @@ export class AddDeviceModal extends View {
     mkInput: () => Element,
     hint?: string,
   ): Element {
-    const labelEl = new Label().addClass("modal-label").setAttribute("for", id).append(label);
+    const labelEl = new Label().addClass("modal__label").setAttribute("for", id).append(label);
     if (hint) {
       labelEl.append(
         " ",
         new Element("span").setStyle("font-weight", "normal").setStyle("opacity", "0.6").setText(hint),
       );
     }
-    return new Div().addClass("modal-field")
+    return new Div().addClass("modal__field")
       .toggleAttribute("hidden", computed(() => !show()))
       .append(labelEl, mkInput());
   }
@@ -208,7 +208,7 @@ export class AddDeviceModal extends View {
       wrap.clear();
       this.discoveredDevices().forEach((d, i) => {
         wrap.append(
-          new Button().setAttribute("type", "button").addClass("device-pick-btn")
+          new Button().setAttribute("type", "button").addClass("device-select-list__btn")
             .setText(`${d.ip}:${d.port}`)
             .on("click", () => this.verifyWithSelection(String(i + 1))),
         );
